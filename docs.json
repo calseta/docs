@@ -6,7 +6,7 @@
     "dark": "/logo/dark.png",
     "light": "/logo/light.png"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "banner": {
     "content": "🚧 **Calseta is under active development.** APIs and features may change. We welcome feedback and contributions on [GitHub](https://github.com/calseta/calseta).",
     "dismissible": true
