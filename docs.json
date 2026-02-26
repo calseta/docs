@@ -1,13 +1,44 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+  "name": "Calseta",
+  "logo": {
+    "dark": "/logo/dark.png",
+    "light": "/logo/light.png"
   },
   "favicon": "/favicon.svg",
+  "banner": {
+    "content": "🚧 **Calseta is under active development.** APIs and features may change. We welcome feedback and contributions on [GitHub](https://github.com/calseta/calseta).",
+    "dismissible": true
+  },
+  "colors": {
+    "primary": "#4D7D71",
+    "light": "#7FCAB8",
+    "dark": "#01795B"
+  },
+  "font": {
+    "headings": { "family": "Manrope" },
+    "body": { "family": "IBM Plex Mono" }
+  },
+  "api": {
+    "baseUrl": "http://localhost:8000",
+    "auth": {
+      "method": "bearer",
+      "name": "API Key",
+      "inputPrefix": "csk_"
+    }
+  },
+  "openapi": "/openapi.json",
+  "navbar": {
+    "links": [
+      { "label": "GitHub", "href": "https://github.com/calseta/calseta" }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get started",
+      "href": "https://docs.calseta.com/quickstart"
+    }
+  },
   "navigation": {
     "tabs": [
       {
@@ -15,21 +46,39 @@
         "groups": [
           {
             "group": "Get Started",
-            "pages": [
-              "introduction",
-              "quickstart",
-              "development"
-            ]
+            "pages": ["quickstart"]
           },
           {
-            "group": "Essentials",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/settings",
-              "essentials/navigation",
-              "essentials/reusable-snippets"
+              "guides/introduction",
+              "guides/how-it-works",
+              "guides/authentication",
+              {
+                "group": "Alert Sources",
+                "pages": [
+                  "guides/alert-sources/overview",
+                  "guides/alert-sources/microsoft-sentinel",
+                  "guides/alert-sources/elastic",
+                  "guides/alert-sources/splunk",
+                  "guides/alert-sources/generic-webhook"
+                ]
+              },
+              {
+                "group": "Enrichment",
+                "pages": [
+                  "guides/enrichment/overview",
+                  "guides/enrichment/virustotal",
+                  "guides/enrichment/abuseipdb",
+                  "guides/enrichment/okta",
+                  "guides/enrichment/entra"
+                ]
+              },
+              "guides/detection-rules",
+              "guides/context-documents",
+              "guides/workflows",
+              "guides/agent-webhooks",
+              "guides/self-hosting"
             ]
           }
         ]
@@ -38,17 +87,127 @@
         "tab": "API Reference",
         "groups": [
           {
-            "group": "API Documentation",
+            "group": "API Reference",
             "pages": [
-              "api-reference/introduction"
+              "api-reference/overview",
+              {
+                "group": "Alerts",
+                "pages": [
+                  "api-reference/alerts/list",
+                  "api-reference/alerts/get",
+                  "api-reference/alerts/create",
+                  "api-reference/alerts/update",
+                  "api-reference/alerts/delete",
+                  "api-reference/alerts/ingest",
+                  "api-reference/alerts/indicators",
+                  "api-reference/alerts/enrichments",
+                  "api-reference/alerts/findings",
+                  "api-reference/alerts/context",
+                  "api-reference/alerts/trigger-agents"
+                ]
+              },
+              {
+                "group": "Incidents",
+                "pages": [
+                  "api-reference/incidents/list",
+                  "api-reference/incidents/get",
+                  "api-reference/incidents/create",
+                  "api-reference/incidents/update",
+                  "api-reference/incidents/delete",
+                  "api-reference/incidents/alerts",
+                  "api-reference/incidents/notes",
+                  "api-reference/incidents/findings"
+                ]
+              },
+              {
+                "group": "Detection Rules",
+                "pages": [
+                  "api-reference/detection-rules/list",
+                  "api-reference/detection-rules/get",
+                  "api-reference/detection-rules/create",
+                  "api-reference/detection-rules/update",
+                  "api-reference/detection-rules/delete",
+                  "api-reference/detection-rules/alerts"
+                ]
+              },
+              {
+                "group": "Context Documents",
+                "pages": [
+                  "api-reference/context-documents/list",
+                  "api-reference/context-documents/get",
+                  "api-reference/context-documents/create",
+                  "api-reference/context-documents/update",
+                  "api-reference/context-documents/delete"
+                ]
+              },
+              {
+                "group": "Enrichments",
+                "pages": [
+                  "api-reference/enrichments/enrich",
+                  "api-reference/enrichments/providers"
+                ]
+              },
+              {
+                "group": "Agents",
+                "pages": [
+                  "api-reference/agents/list",
+                  "api-reference/agents/get",
+                  "api-reference/agents/register",
+                  "api-reference/agents/update",
+                  "api-reference/agents/delete",
+                  "api-reference/agents/runs",
+                  "api-reference/agents/test"
+                ]
+              },
+              {
+                "group": "Metrics",
+                "pages": [
+                  "api-reference/metrics/alerts",
+                  "api-reference/metrics/workflows",
+                  "api-reference/metrics/summary"
+                ]
+              },
+              {
+                "group": "API Keys",
+                "pages": [
+                  "api-reference/api-keys/list",
+                  "api-reference/api-keys/create",
+                  "api-reference/api-keys/delete"
+                ]
+              }
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "MCP Reference",
+        "groups": [
           {
-            "group": "Endpoint Examples",
+            "group": "MCP Reference",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete"
+              "mcp-reference/overview",
+              "mcp-reference/setup",
+              {
+                "group": "Resources",
+                "pages": [
+                  "mcp-reference/resources/alerts",
+                  "mcp-reference/resources/incidents",
+                  "mcp-reference/resources/detection-rules",
+                  "mcp-reference/resources/context-documents",
+                  "mcp-reference/resources/metrics"
+                ]
+              },
+              {
+                "group": "Tools",
+                "pages": [
+                  "mcp-reference/tools/post-alert-finding",
+                  "mcp-reference/tools/update-alert-status",
+                  "mcp-reference/tools/create-incident",
+                  "mcp-reference/tools/add-incident-note",
+                  "mcp-reference/tools/search-alerts",
+                  "mcp-reference/tools/enrich-indicator"
+                ]
+              }
             ]
           }
         ]
@@ -57,45 +216,21 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "icon": "github",
+          "href": "https://github.com/calseta/calseta"
         },
         {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Contact",
+          "icon": "envelope",
+          "href": "mailto:contact@calseta.com"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/calseta/calseta"
     }
   }
 }
