@@ -4,7 +4,8 @@
   "name": "Calseta",
   "logo": {
     "dark": "/logo/dark.png",
-    "light": "/logo/light.png"
+    "light": "/logo/light.png",
+    "href": "https://calseta.com"
   },
   "favicon": "/favicon.png",
   "banner": {
@@ -31,6 +32,7 @@
   "openapi": "/openapi.json",
   "navbar": {
     "links": [
+      { "label": "Website", "href": "https://calseta.com" },
       { "label": "GitHub", "href": "https://github.com/calseta/calseta" }
     ],
     "primary": {
