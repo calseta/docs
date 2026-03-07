@@ -1,0 +1,45 @@
+---
+title: "execute_workflow"
+description: "MCP tool to trigger workflow execution"
+---
+
+## execute_workflow
+
+Triggers execution of a workflow. When the workflow has `requires_approval: true`, creates a pending approval request instead of executing immediately.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `workflow_uuid` | string | Yes | UUID of the workflow to execute |
+| `alert_uuid` | string | No | Alert context for the execution |
+| `indicator_uuid` | string | No | Indicator context for the execution |
+| `reason` | string | Yes | Why the agent wants to execute this workflow |
+| `confidence` | float | Yes | Agent's confidence score (0.0 to 1.0) |
+
+<Info>
+MCP tool calls are always treated as `trigger_source: agent`. The `reason` and `confidence` fields are required because the approval gate needs this context to present to human reviewers.
+</Info>
+
+### Return Value
+
+```json
+{
+  "status": "queued",
+  "workflow_run_uuid": "run-xyz789-..."
+}
+```
+
+Or, if approval is required:
+
+```json
+{
+  "status": "pending_approval",
+  "approval_request_uuid": "apr-abc123-...",
+  "expires_at": "2025-01-15T11:00:00Z"
+}
+```
+
+### Required Scope
+
+`workflows:execute`

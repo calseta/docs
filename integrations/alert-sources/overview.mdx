@@ -1,0 +1,76 @@
+---
+title: "Alert Sources"
+description: "Connect your SIEM or detection platform to Calseta."
+---
+
+Calseta ingests alerts from any source via webhooks. Each source has a dedicated plugin that validates, normalizes, and extracts indicators from the raw payload.
+
+## Supported Sources
+
+<CardGroup cols={2}>
+  <Card title="Microsoft Sentinel" icon="microsoft" href="/integrations/alert-sources/microsoft-sentinel">
+    Azure-native SIEM. Forward alerts via Logic Apps or Automation Rules.
+  </Card>
+  <Card title="Elastic Security" icon="magnifying-glass" href="/integrations/alert-sources/elastic">
+    Elastic SIEM. Forward alerts via Elastic webhook actions.
+  </Card>
+  <Card title="Splunk" icon="bolt" href="/integrations/alert-sources/splunk">
+    Splunk Enterprise Security. Forward alerts via webhook alert actions.
+  </Card>
+  <Card title="Generic Webhook" icon="webhook" href="/integrations/alert-sources/generic-webhook">
+    Any source that can POST JSON. Use the generic format for unsupported SIEMs.
+  </Card>
+</CardGroup>
+
+## How Ingestion Works
+
+```
+Source System ──POST──▶ /v1/ingest/{source_name} ──▶ 202 Accepted
+                              │
+                    ┌─────────┴──────────┐
+                    │ 1. Validate payload │
+                    │ 2. Normalize fields │
+                    │ 3. Extract indicators│
+                    │ 4. Save alert + indicators│
+                    │ 5. Enqueue enrichment│
+                    └────────────────────┘
+```
+
+1. **Validate** — the source plugin checks the payload structure
+2. **Normalize** — maps source-specific fields to Calseta's agent-native schema
+3. **Extract indicators** — pulls IPs, domains, hashes, URLs, emails, accounts from the payload
+4. **Save** — persists the normalized alert and indicators to the database
+5. **Enqueue** — enrichment and agent dispatch are queued for async processing
+
+The endpoint returns `202 Accepted` within 200ms. All enrichment and dispatch happen asynchronously.
+
+## Webhook Signature Verification
+
+Each source can verify webhook signatures to ensure payloads haven't been tampered with. Configure the webhook secret via environment variables:
+
+| Variable | Source |
+|----------|--------|
+| `SENTINEL_WEBHOOK_SECRET` | Microsoft Sentinel |
+| `ELASTIC_WEBHOOK_SECRET` | Elastic Security |
+| `SPLUNK_WEBHOOK_SECRET` | Splunk |
+
+Signature verification is optional but recommended for production deployments.
+
+## Normalized Alert Schema
+
+Regardless of source, all alerts are normalized to:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | Alert title |
+| `severity` | string | `Pending`, `Informational`, `Low`, `Medium`, `High`, `Critical` |
+| `occurred_at` | timestamp | When the event occurred (from source) |
+| `source_name` | string | Which source sent the alert |
+| `status` | string | Investigation lifecycle: `Open` → `Triaging`/`Escalated` → `Closed` |
+| `enrichment_status` | string | System-managed: `Pending` → `Enriched`/`Failed` |
+| `tags` | string[] | Alert tags |
+| `raw_payload` | object | Original source payload (preserved in full) |
+
+## Adding Custom Sources
+
+Calseta's source system is plugin-based. See [Adding Alert Sources](/contributing/adding-alert-sources) for a step-by-step guide to building your own source integration.

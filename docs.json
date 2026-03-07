@@ -9,7 +9,7 @@
   },
   "favicon": "/favicon.png",
   "banner": {
-    "content": "🚧 **Calseta is under active development.** APIs and features may change. We welcome feedback and contributions on [GitHub](https://github.com/calseta/calseta).",
+    "content": "Calseta is under active development. APIs and features may change. We welcome feedback and contributions on [GitHub](https://github.com/calseta/calseta).",
     "dismissible": true
   },
   "colors": {
@@ -26,10 +26,10 @@
     "auth": {
       "method": "bearer",
       "name": "API Key",
-      "inputPrefix": "csk_"
-    }
+      "inputPrefix": "cai_"
+    },
+    "openapi": "openapi.json"
   },
-  "openapi": "/openapi.json",
   "navbar": {
     "links": [
       { "label": "Website", "href": "https://calseta.com" },
@@ -38,49 +38,74 @@
     "primary": {
       "type": "button",
       "label": "Get started",
-      "href": "https://docs.calseta.com/quickstart"
+      "href": "https://docs.calseta.com/getting-started/quickstart"
     }
   },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
             "group": "Get Started",
-            "pages": ["quickstart"]
+            "pages": [
+              "getting-started/quickstart",
+              "getting-started/introduction",
+              "getting-started/how-it-works"
+            ]
           },
           {
-            "group": "Guides",
+            "group": "Concepts",
             "pages": [
-              "guides/introduction",
-              "guides/how-it-works",
-              "guides/authentication",
+              "concepts/alert-schema",
+              "concepts/authentication",
+              "concepts/detection-rules",
+              "concepts/context-documents",
+              "concepts/workflows",
+              "concepts/security",
+              "concepts/ui"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
               {
                 "group": "Alert Sources",
                 "pages": [
-                  "guides/alert-sources/overview",
-                  "guides/alert-sources/microsoft-sentinel",
-                  "guides/alert-sources/elastic",
-                  "guides/alert-sources/splunk",
-                  "guides/alert-sources/generic-webhook"
+                  "integrations/alert-sources/overview",
+                  "integrations/alert-sources/microsoft-sentinel",
+                  "integrations/alert-sources/elastic",
+                  "integrations/alert-sources/splunk",
+                  "integrations/alert-sources/generic-webhook"
                 ]
               },
               {
                 "group": "Enrichment",
                 "pages": [
-                  "guides/enrichment/overview",
-                  "guides/enrichment/virustotal",
-                  "guides/enrichment/abuseipdb",
-                  "guides/enrichment/okta",
-                  "guides/enrichment/entra"
+                  "integrations/enrichment/overview",
+                  "integrations/enrichment/virustotal",
+                  "integrations/enrichment/abuseipdb",
+                  "integrations/enrichment/okta",
+                  "integrations/enrichment/entra",
+                  "integrations/enrichment/custom-sources"
                 ]
               },
-              "guides/detection-rules",
-              "guides/context-documents",
-              "guides/workflows",
-              "guides/agent-webhooks",
-              "guides/self-hosting"
+              "integrations/agent-webhooks"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "operations/self-hosting",
+              "operations/roadmap"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/adding-alert-sources",
+              "contributing/adding-enrichment-providers",
+              "contributing/community-integrations"
             ]
           }
         ]
@@ -97,28 +122,20 @@
                 "pages": [
                   "api-reference/alerts/list",
                   "api-reference/alerts/get",
-                  "api-reference/alerts/create",
                   "api-reference/alerts/update",
                   "api-reference/alerts/delete",
                   "api-reference/alerts/ingest",
-                  "api-reference/alerts/indicators",
-                  "api-reference/alerts/enrichments",
-                  "api-reference/alerts/findings",
+                  "api-reference/alerts/generic-ingest",
+                  "api-reference/alerts/list-indicators",
+                  "api-reference/alerts/add-indicators",
+                  "api-reference/alerts/list-findings",
+                  "api-reference/alerts/post-finding",
                   "api-reference/alerts/context",
-                  "api-reference/alerts/trigger-agents"
-                ]
-              },
-              {
-                "group": "Incidents",
-                "pages": [
-                  "api-reference/incidents/list",
-                  "api-reference/incidents/get",
-                  "api-reference/incidents/create",
-                  "api-reference/incidents/update",
-                  "api-reference/incidents/delete",
-                  "api-reference/incidents/alerts",
-                  "api-reference/incidents/notes",
-                  "api-reference/incidents/findings"
+                  "api-reference/alerts/activity",
+                  "api-reference/alerts/enrich",
+                  "api-reference/alerts/relationship-graph",
+                  "api-reference/alerts/trigger-agents",
+                  "api-reference/alerts/dispatch-agent"
                 ]
               },
               {
@@ -128,8 +145,7 @@
                   "api-reference/detection-rules/get",
                   "api-reference/detection-rules/create",
                   "api-reference/detection-rules/update",
-                  "api-reference/detection-rules/delete",
-                  "api-reference/detection-rules/alerts"
+                  "api-reference/detection-rules/delete"
                 ]
               },
               {
@@ -143,10 +159,70 @@
                 ]
               },
               {
-                "group": "Enrichments",
+                "group": "Workflows",
                 "pages": [
-                  "api-reference/enrichments/enrich",
-                  "api-reference/enrichments/providers"
+                  "api-reference/workflows/list",
+                  "api-reference/workflows/get",
+                  "api-reference/workflows/create",
+                  "api-reference/workflows/update",
+                  "api-reference/workflows/delete",
+                  "api-reference/workflows/execute",
+                  "api-reference/workflows/runs",
+                  "api-reference/workflows/generate",
+                  "api-reference/workflows/test",
+                  "api-reference/workflows/versions"
+                ]
+              },
+              {
+                "group": "Workflow Runs",
+                "pages": [
+                  "api-reference/workflow-runs/list"
+                ]
+              },
+              {
+                "group": "Workflow Approvals",
+                "pages": [
+                  "api-reference/workflow-approvals/list",
+                  "api-reference/workflow-approvals/get",
+                  "api-reference/workflow-approvals/approve",
+                  "api-reference/workflow-approvals/reject"
+                ]
+              },
+              {
+                "group": "Enrichment",
+                "pages": [
+                  "api-reference/enrichment/enrich",
+                  "api-reference/enrichment/providers"
+                ]
+              },
+              {
+                "group": "Enrichment Providers",
+                "pages": [
+                  "api-reference/enrichment-providers/list",
+                  "api-reference/enrichment-providers/get",
+                  "api-reference/enrichment-providers/create",
+                  "api-reference/enrichment-providers/update",
+                  "api-reference/enrichment-providers/delete",
+                  "api-reference/enrichment-providers/test",
+                  "api-reference/enrichment-providers/activate",
+                  "api-reference/enrichment-providers/deactivate"
+                ]
+              },
+              {
+                "group": "Indicators",
+                "pages": [
+                  "api-reference/indicators/get",
+                  "api-reference/indicators/update"
+                ]
+              },
+              {
+                "group": "Indicator Mappings",
+                "pages": [
+                  "api-reference/indicator-mappings/list",
+                  "api-reference/indicator-mappings/get",
+                  "api-reference/indicator-mappings/create",
+                  "api-reference/indicator-mappings/update",
+                  "api-reference/indicator-mappings/delete"
                 ]
               },
               {
@@ -157,23 +233,34 @@
                   "api-reference/agents/register",
                   "api-reference/agents/update",
                   "api-reference/agents/delete",
-                  "api-reference/agents/runs",
                   "api-reference/agents/test"
+                ]
+              },
+              {
+                "group": "Sources",
+                "pages": [
+                  "api-reference/sources/list",
+                  "api-reference/sources/get",
+                  "api-reference/sources/create",
+                  "api-reference/sources/update",
+                  "api-reference/sources/delete"
                 ]
               },
               {
                 "group": "Metrics",
                 "pages": [
+                  "api-reference/metrics/summary",
                   "api-reference/metrics/alerts",
-                  "api-reference/metrics/workflows",
-                  "api-reference/metrics/summary"
+                  "api-reference/metrics/workflows"
                 ]
               },
               {
                 "group": "API Keys",
                 "pages": [
                   "api-reference/api-keys/list",
+                  "api-reference/api-keys/get",
                   "api-reference/api-keys/create",
+                  "api-reference/api-keys/update",
                   "api-reference/api-keys/delete"
                 ]
               }
@@ -193,9 +280,10 @@
                 "group": "Resources",
                 "pages": [
                   "mcp-reference/resources/alerts",
-                  "mcp-reference/resources/incidents",
                   "mcp-reference/resources/detection-rules",
                   "mcp-reference/resources/context-documents",
+                  "mcp-reference/resources/workflows",
+                  "mcp-reference/resources/enrichments",
                   "mcp-reference/resources/metrics"
                 ]
               },
@@ -204,9 +292,9 @@
                 "pages": [
                   "mcp-reference/tools/post-alert-finding",
                   "mcp-reference/tools/update-alert-status",
-                  "mcp-reference/tools/create-incident",
-                  "mcp-reference/tools/add-incident-note",
+                  "mcp-reference/tools/execute-workflow",
                   "mcp-reference/tools/search-alerts",
+                  "mcp-reference/tools/search-detection-rules",
                   "mcp-reference/tools/enrich-indicator"
                 ]
               }

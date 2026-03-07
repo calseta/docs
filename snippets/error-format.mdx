@@ -1,0 +1,23 @@
+All error responses follow a consistent format:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Alert with UUID abc123 not found",
+    "details": {}
+  }
+}
+```
+
+Common error codes:
+
+| HTTP Status | Code | Description |
+|-------------|------|-------------|
+| `400` | `validation_error` | Invalid request body or parameters |
+| `401` | `unauthorized` | Missing or invalid API key |
+| `403` | `forbidden` | API key lacks required scope |
+| `404` | `not_found` | Resource does not exist |
+| `409` | `conflict` | Resource state conflict |
+| `429` | `rate_limited` | Too many requests (check `Retry-After` header) |
+| `500` | `internal_error` | Unexpected server error |

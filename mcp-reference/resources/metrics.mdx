@@ -1,6 +1,62 @@
 ---
-title: "Metrics Resource"
-description: "Read platform metrics into your AI agent's context."
+title: "Metrics"
+description: "MCP resource for platform metrics."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+## calseta://metrics/summary
+
+Returns a summary of platform metrics that agents can use to reason about SOC health and workload.
+
+**Example response:**
+
+```json
+{
+  "alerts": {
+    "total": 1247,
+    "by_status": {
+      "Open": 42,
+      "Triaging": 15,
+      "Escalated": 3,
+      "Closed": 1187
+    },
+    "by_severity": {
+      "Critical": 8,
+      "High": 87,
+      "Medium": 312,
+      "Low": 540,
+      "Informational": 300
+    },
+    "by_source": {
+      "sentinel": 623,
+      "elastic": 412,
+      "splunk": 212
+    }
+  },
+  "indicators": {
+    "total": 3842,
+    "by_malice": {
+      "Malicious": 127,
+      "Suspicious": 341,
+      "Benign": 2890,
+      "Pending": 484
+    }
+  },
+  "enrichment": {
+    "providers_active": 4,
+    "indicators_enriched_24h": 234
+  },
+  "workflows": {
+    "total_runs_24h": 18,
+    "successful_24h": 16,
+    "failed_24h": 2
+  },
+  "mttd_hours": 0.42,
+  "false_positive_rate": 0.23
+}
+```
+
+**Token optimization:** A single resource call gives agents a comprehensive view of SOC health — no need to query multiple endpoints.
+
+## Required Scope
+
+`alerts:read`

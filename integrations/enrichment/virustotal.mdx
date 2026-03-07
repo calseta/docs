@@ -1,0 +1,95 @@
+---
+title: "VirusTotal"
+description: "Enrich IPs, domains, and file hashes using VirusTotal."
+---
+
+VirusTotal provides reputation data for IP addresses, domains, and file hashes by aggregating results from 70+ antivirus engines and security services.
+
+## Supported Indicator Types
+
+| Type | VirusTotal Endpoint |
+|------|---------------------|
+| `ip` | `GET /api/v3/ip_addresses/{ip}` |
+| `domain` | `GET /api/v3/domains/{domain}` |
+| `hash_md5` | `GET /api/v3/files/{hash}` |
+| `hash_sha1` | `GET /api/v3/files/{hash}` |
+| `hash_sha256` | `GET /api/v3/files/{hash}` |
+
+## Configuration
+
+Set your VirusTotal API key in the `.env` file:
+
+```env
+VIRUSTOTAL_API_KEY=your-virustotal-api-key
+```
+
+<Info>
+VirusTotal offers free API keys with a rate limit of 4 requests/minute. Premium keys have higher limits. Calseta respects rate limits and caches results to minimize API calls.
+</Info>
+
+## Extracted Fields
+
+These fields are extracted from VirusTotal responses and surfaced to agents in the `extracted` object:
+
+### IP Addresses
+
+| Field | Description |
+|-------|-------------|
+| `malicious_count` | Number of engines flagging as malicious |
+| `suspicious_count` | Number of engines flagging as suspicious |
+| `harmless_count` | Number of engines flagging as harmless |
+| `country` | Country code |
+| `as_owner` | Autonomous system owner |
+| `network` | Network CIDR |
+
+### Domains
+
+| Field | Description |
+|-------|-------------|
+| `malicious_count` | Number of engines flagging as malicious |
+| `suspicious_count` | Number of engines flagging as suspicious |
+| `categories` | Domain categories from various services |
+| `registrar` | Domain registrar |
+| `creation_date` | Domain registration date |
+
+### File Hashes
+
+| Field | Description |
+|-------|-------------|
+| `malicious_count` | Number of engines detecting the file |
+| `suspicious_count` | Number of engines flagging as suspicious |
+| `type_description` | File type description |
+| `file_size` | File size in bytes |
+| `first_submission_date` | When the file was first submitted |
+| `popular_threat_name` | Most common detection name |
+
+## Malice Rules
+
+Default verdict thresholds:
+
+| Condition | Verdict |
+|-----------|---------|
+| `malicious_count >= 5` | `Malicious` |
+| `malicious_count >= 1` or `suspicious_count >= 3` | `Suspicious` |
+| Enrichment successful, no detections | `Benign` |
+
+These thresholds are configurable via the enrichment provider's `malice_rules` field.
+
+## Cache TTLs
+
+| Indicator Type | Default TTL |
+|----------------|-------------|
+| IP | 1 hour |
+| Domain | 6 hours |
+| Hash (all types) | 24 hours |
+
+## Rate Limits
+
+VirusTotal enforces strict rate limits:
+
+| Plan | Requests/Minute |
+|------|-----------------|
+| Free | 4 |
+| Premium | Varies by plan |
+
+Calseta's caching significantly reduces API calls — the same indicator across multiple alerts is only enriched once within the cache TTL.

@@ -1,6 +1,65 @@
 ---
 title: "enrich_indicator"
-description: "Trigger enrichment for an indicator and return results."
+description: "MCP tool to trigger on-demand enrichment for an indicator."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+## enrich_indicator
+
+Trigger enrichment for any indicator value. The enrichment runs asynchronously — the tool returns immediately with the indicator's current state.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `type` | string | Yes | Indicator type: `ip`, `domain`, `hash_md5`, `hash_sha1`, `hash_sha256`, `url`, `email`, `account` |
+| `value` | string | Yes | The indicator value to enrich |
+
+### Example
+
+```json
+{
+  "type": "ip",
+  "value": "185.220.101.47"
+}
+```
+
+### Return Value
+
+If enrichment results are already cached:
+
+```json
+{
+  "type": "ip",
+  "value": "185.220.101.47",
+  "malice": "Malicious",
+  "enrichment_results": {
+    "virustotal": {
+      "extracted": { "malicious_count": 14 },
+      "success": true
+    },
+    "abuseipdb": {
+      "extracted": { "abuse_confidence_score": 97 },
+      "success": true
+    }
+  }
+}
+```
+
+If enrichment is in progress:
+
+```json
+{
+  "type": "ip",
+  "value": "185.220.101.47",
+  "malice": "Pending",
+  "status": "enriching"
+}
+```
+
+<Tip>
+If the indicator has been previously enriched and the cache is still valid, results are returned immediately without re-querying providers.
+</Tip>
+
+### Required Scope
+
+`enrichments:read`

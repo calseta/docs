@@ -1,6 +1,57 @@
 ---
-title: "Detection Rules Resource"
-description: "Read detection rule definitions into your AI agent's context."
+title: "Detection Rules"
+description: "MCP resources for reading detection rule data."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+## calseta://detection-rules
+
+Returns all detection rules with metadata and documentation.
+
+**Example response:**
+
+```json
+[
+  {
+    "uuid": "dr-abc123-...",
+    "name": "Suspicious Auth - Impossible Travel",
+    "severity": "High",
+    "mitre_tactics": ["TA0001"],
+    "mitre_techniques": ["T1078"],
+    "documentation": "## Overview\nDetects authentication from two geographically distant locations..."
+  }
+]
+```
+
+---
+
+## calseta://detection-rules/{uuid}
+
+Returns a single detection rule with full documentation.
+
+**URI parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `uuid` | string | The detection rule's unique identifier |
+
+**Example response:**
+
+```json
+{
+  "uuid": "dr-abc123-...",
+  "name": "Suspicious Auth - Impossible Travel",
+  "source_rule_id": "SENTINEL-IR-001",
+  "severity": "High",
+  "mitre_tactics": ["TA0001"],
+  "mitre_techniques": ["T1078"],
+  "data_sources": ["Azure AD Sign-in Logs"],
+  "false_positive_tags": ["vpn", "travel"],
+  "documentation": "## Overview\nDetects authentication from two geographically distant locations within a short time window.\n\n## False Positives\n- VPN users switching regions\n- Business travel\n\n## Recommended Response\n1. Check travel requests\n2. Verify source IPs\n3. Revoke sessions if unauthorized"
+}
+```
+
+**Token optimization:** Detection rule documentation is included inline — agents don't need a separate call to understand what a detection rule does.
+
+## Required Scope
+
+`alerts:read`

@@ -1,0 +1,52 @@
+---
+title: "Enrichments"
+description: "MCP resource for indicator enrichment data"
+---
+
+## calseta://enrichments/{type}/{value}
+
+Returns enrichment results for a specific indicator, identical to the REST API's `GET /v1/enrichments/{type}/{value}`.
+
+**URI parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | string | Indicator type: `ip`, `domain`, `hash_md5`, `hash_sha1`, `hash_sha256`, `url`, `email`, `account` |
+| `value` | string | The indicator value |
+
+**Example URI:** `calseta://enrichments/ip/185.220.101.47`
+
+**Example response:**
+
+```json
+{
+  "type": "ip",
+  "value": "185.220.101.47",
+  "malice": "Malicious",
+  "enrichment_results": {
+    "virustotal": {
+      "extracted": {
+        "malicious_count": 14,
+        "suspicious_count": 2,
+        "country": "DE"
+      },
+      "success": true,
+      "enriched_at": "2025-01-15T10:30:05Z"
+    },
+    "abuseipdb": {
+      "extracted": {
+        "abuse_confidence_score": 97,
+        "total_reports": 342
+      },
+      "success": true,
+      "enriched_at": "2025-01-15T10:30:04Z"
+    }
+  }
+}
+```
+
+**Token optimization:** The `extracted` sub-object contains only the fields most relevant to agent reasoning (configured via enrichment field extractions). The full provider response is available in `raw` but typically not needed by agents.
+
+## Required Scope
+
+`enrichments:read`

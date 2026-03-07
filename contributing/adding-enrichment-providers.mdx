@@ -1,0 +1,213 @@
+---
+title: "Adding Enrichment Providers"
+description: "Add custom enrichment providers without writing code — configure via API or database seed."
+---
+
+Calseta's enrichment system is **runtime-configurable**. Adding a new provider requires zero code changes — you configure it via the REST API or by seeding the database. A single adapter class (`DatabaseDrivenProvider`) handles all providers.
+
+## Two Ways to Add Providers
+
+### Via API (Runtime)
+
+Create a provider at runtime using the REST API:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichment-providers \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider_name": "greynoise",
+    "display_name": "GreyNoise",
+    "supported_indicator_types": ["ip"],
+    "http_config": {
+      "steps": [{
+        "method": "GET",
+        "url": "https://api.greynoise.io/v3/community/{{value}}",
+        "headers": {
+          "key": "{{auth_token}}"
+        }
+      }]
+    },
+    "auth_config": {
+      "token": "your-greynoise-key"
+    },
+    "malice_rules": {
+      "conditions": [
+        { "field": "classification", "operator": "eq", "value": "malicious", "verdict": "Malicious" },
+        { "field": "classification", "operator": "eq", "value": "unknown", "verdict": "Suspicious" },
+        { "field": "classification", "operator": "eq", "value": "benign", "verdict": "Benign" }
+      ]
+    },
+    "cache_ttl_by_type": {
+      "ip": 3600
+    }
+  }'
+```
+
+### Via Database Seed (Builtin)
+
+For providers that ship with Calseta, add a seed entry in `app/seed/enrichment_providers.py`. This is how the four builtin providers (VirusTotal, AbuseIPDB, Okta, Entra) are defined.
+
+## HTTP Config Structure
+
+The `http_config` defines how Calseta calls the provider's API. It supports template variables that are resolved at runtime.
+
+```json
+{
+  "steps": [
+    {
+      "method": "GET",
+      "url": "https://api.example.com/v1/lookup/{{value}}",
+      "headers": {
+        "Authorization": "Bearer {{auth_token}}",
+        "Accept": "application/json"
+      },
+      "params": {
+        "maxAgeInDays": "90"
+      }
+    }
+  ]
+}
+```
+
+### Template Variables
+
+| Variable | Resolves To |
+|----------|-------------|
+| `{{value}}` | The indicator value being enriched |
+| `{{type}}` | The indicator type (`ip`, `domain`, etc.) |
+| `{{auth_token}}` | The auth credential from `auth_config` |
+
+## Auth Types
+
+| Type | Description |
+|------|-------------|
+| `no_auth` | No authentication required (default) |
+| `api_key` | API key — stored in `auth_config`, resolved via `{{auth_token}}` in headers |
+| `api_token` | API token — same resolution as `api_key`, named differently for clarity |
+| `oauth2_client_credentials` | OAuth2 client credentials flow |
+
+How you send the credential (header name, format) is controlled by the `http_config` template — `auth_type` just tells Calseta whether credentials are needed and how to resolve them. For example, to send an API key in a custom header:
+
+```json
+{
+  "http_config": {
+    "steps": [{
+      "headers": { "X-Api-Key": "{{auth_token}}" }
+    }]
+  },
+  "auth_config": { "token": "your-key-here" }
+}
+```
+
+Auth credentials are **encrypted at rest** using the `ENCRYPTION_KEY` environment variable.
+
+## Malice Rules
+
+Configure rules that map provider response fields to malice verdicts:
+
+```json
+{
+  "conditions": [
+    {
+      "field": "abuse_confidence_score",
+      "operator": "gte",
+      "value": 80,
+      "verdict": "Malicious"
+    },
+    {
+      "field": "abuse_confidence_score",
+      "operator": "gte",
+      "value": 25,
+      "verdict": "Suspicious"
+    }
+  ],
+  "default_verdict": "Benign"
+}
+```
+
+### Operators
+
+| Operator | Description |
+|----------|-------------|
+| `eq` | Equals |
+| `neq` | Not equals |
+| `gte` | Greater than or equal |
+| `lte` | Less than or equal |
+| `in` | In list |
+| `contains` | Contains substring |
+
+Conditions are evaluated in order — the first match wins.
+
+## Field Extractions
+
+Define which fields from the raw provider response are surfaced to agents in the `extracted` object:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider_name": "greynoise",
+    "indicator_type": "ip",
+    "source_path": "data.classification",
+    "target_key": "classification",
+    "value_type": "string",
+    "description": "GreyNoise classification: benign, malicious, or unknown"
+  }'
+```
+
+| Field | Description |
+|-------|-------------|
+| `source_path` | Dot-notation path into the raw response (e.g., `data.results.score`) |
+| `target_key` | Key name in the `extracted` object surfaced to agents |
+| `value_type` | Expected type: `string`, `integer`, `float`, `boolean`, `array` |
+
+## Cache Configuration
+
+Set TTLs per indicator type:
+
+```json
+{
+  "cache_ttl_by_type": {
+    "ip": 3600,
+    "domain": 21600,
+    "hash_sha256": 86400
+  }
+}
+```
+
+Values are in seconds. If not specified for a type, the system default applies.
+
+## Testing Your Provider
+
+After adding a provider, test with on-demand enrichment:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichments \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -d '{"type": "ip", "value": "8.8.8.8"}'
+```
+
+Then check the results:
+
+```bash
+curl http://localhost:8000/v1/enrichments/ip/8.8.8.8 \
+  -H "Authorization: Bearer cai_your_api_key"
+```
+
+## Disabling a Provider
+
+Deactivate a provider without deleting it:
+
+```bash
+curl -X PATCH http://localhost:8000/v1/enrichment-providers/{uuid} \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -d '{"is_active": false}'
+```
+
+Disabled providers are skipped during enrichment. Existing cached results remain accessible.
+
+## Contributing
+
+See [Community Integrations](/contributing/community-integrations) for the process of contributing new provider configurations.

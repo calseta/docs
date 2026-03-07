@@ -1,0 +1,19 @@
+All list endpoints support pagination:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number (1-indexed) |
+| `page_size` | integer | 50 | Results per page (max 500) |
+
+Paginated responses include a `meta` block:
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "total": 142,
+    "page": 1,
+    "page_size": 50
+  }
+}
+```

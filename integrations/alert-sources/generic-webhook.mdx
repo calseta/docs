@@ -1,0 +1,83 @@
+---
+title: "Generic Webhook"
+description: "Send alerts from any source using the generic webhook format."
+---
+
+The generic webhook source accepts alerts from any system that can POST JSON. Use it for SIEMs and detection tools that don't have a dedicated Calseta plugin.
+
+## Ingestion Endpoint
+
+```
+POST /v1/ingest/generic
+```
+
+## Payload Format
+
+The generic source accepts a flexible JSON payload. Provide as many fields as possible for best normalization:
+
+```json
+{
+  "title": "Suspicious Process Execution",
+  "severity": "High",
+  "occurred_at": "2025-01-15T10:28:00Z",
+  "description": "cmd.exe spawned from Excel.exe on WORKSTATION-42",
+  "tags": ["endpoint", "execution"],
+  "source_rule_id": "RULE-001",
+  "indicators": [
+    { "type": "ip", "value": "10.0.0.42" },
+    { "type": "hash_sha256", "value": "a1b2c3d4e5f6..." },
+    { "type": "account", "value": "jsmith@company.com" }
+  ]
+}
+```
+
+### Field Reference
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | Yes | Alert title |
+| `severity` | string | No | `Informational`, `Low`, `Medium`, `High`, `Critical` (default: `Pending`) |
+| `occurred_at` | string | No | ISO 8601 timestamp (default: current time) |
+| `description` | string | No | Alert description |
+| `tags` | string[] | No | Tags for categorization and targeting rules |
+| `source_rule_id` | string | No | Detection rule ID in the source system |
+| `indicators` | array | No | Pre-extracted indicators |
+
+### Indicator Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | `ip`, `domain`, `hash_md5`, `hash_sha1`, `hash_sha256`, `url`, `email`, `account` |
+| `value` | string | Yes | The indicator value |
+
+## Indicator Extraction
+
+The generic source extracts indicators from:
+
+1. **Explicit indicators** — the `indicators` array in the payload
+2. **System mappings** — normalized field mappings match against the alert's normalized columns
+3. **Custom mappings** — user-defined mappings against `raw_payload` fields
+
+<Tip>
+Even if you provide explicit indicators, the system and custom mapping passes may extract additional indicators from other fields in the payload.
+</Tip>
+
+## Authentication
+
+```bash
+curl -X POST https://your-calseta-host/v1/ingest/generic \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{ "title": "Test Alert", "severity": "Low" }'
+```
+
+## Use Cases
+
+- **Custom detection tools** — forward alerts from homegrown detection scripts
+- **Third-party SIEMs** — any SIEM with webhook/HTTP output capability
+- **Testing and development** — send test alerts during integration development
+- **Manual ingestion** — inject alerts from incident response or threat hunting
+
+## API Reference
+
+See [Ingest Alert](/api-reference/alerts/ingest) for the full endpoint documentation.

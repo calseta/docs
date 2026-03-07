@@ -1,6 +1,96 @@
 ---
 title: "MCP Overview"
-description: "Calseta's MCP server exposes alerts, incidents, and enrichment data to AI agents."
+description: "Calseta's MCP server exposes alerts, enrichment, and context data to AI agents via the Model Context Protocol."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+Calseta includes a native [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that gives AI agents direct access to alert data, detection rules, enrichment results, context documents, workflows, and metrics — with zero custom client code.
+
+## What is MCP?
+
+MCP is an open protocol that connects AI models to external data sources and tools. Instead of building custom API integrations, agents that support MCP can discover and use Calseta's data automatically.
+
+## Architecture
+
+The MCP server runs as a separate process on port 8001, connecting to the same PostgreSQL database as the REST API:
+
+```
+Your Agent (Claude, GPT, etc.)
+    │
+    │ MCP Protocol (SSE transport)
+    │
+    ▼
+Calseta MCP Server (port 8001)
+    │
+    ▼
+PostgreSQL (shared with REST API)
+```
+
+<Info>
+The MCP server is a thin adapter over the same service layer as the REST API. It has no independent business logic — same data, same auth, different protocol.
+</Info>
+
+## Authentication
+
+The MCP server uses the same API keys as the REST API. Pass the key in the request headers:
+
+```
+Authorization: Bearer cai_your_api_key
+```
+
+The same scopes apply. An MCP client with `alerts:read` can access alert resources but not execute workflows.
+
+## Resources vs Tools
+
+| Concept | Purpose | Analogy |
+|---------|---------|---------|
+| **Resources** | Read-only data access | GET endpoints |
+| **Tools** | Actions with side effects | POST/PATCH endpoints |
+
+### Resources (Read)
+
+| URI | Description |
+|-----|-------------|
+| `calseta://alerts` | List recent alerts |
+| `calseta://alerts/{uuid}` | Get a single alert with full details |
+| `calseta://alerts/{uuid}/activity` | Activity timeline for an alert |
+| `calseta://alerts/{uuid}/context` | Context documents matched to an alert |
+| `calseta://detection-rules` | List all detection rules |
+| `calseta://detection-rules/{uuid}` | Get a single detection rule |
+| `calseta://context-documents` | List all context documents |
+| `calseta://context-documents/{uuid}` | Get a single context document |
+| `calseta://workflows` | List active workflows |
+| `calseta://workflows/{uuid}` | Get a single workflow |
+| `calseta://enrichments/{type}/{value}` | Enrichment results for an indicator |
+| `calseta://metrics/summary` | Platform metrics summary |
+
+### Tools (Write/Execute)
+
+| Tool | Description |
+|------|-------------|
+| `post_alert_finding` | Post an analysis finding to an alert |
+| `update_alert_status` | Update an alert's investigation status |
+| `execute_workflow` | Trigger workflow execution |
+| `enrich_indicator` | Trigger on-demand enrichment |
+| `search_alerts` | Search alerts with filters |
+| `search_detection_rules` | Search detection rules |
+
+## Token Optimization
+
+MCP resources are designed for minimal token consumption:
+
+- **Structured data** — clean field names, no raw API dumps
+- **Extracted enrichment** — only the most relevant fields from each provider
+- **Documentation included** — detection rules and workflows include their documentation inline, so agents don't need to make additional calls
+- **No code in workflow resources** — agents see documentation and metadata, not implementation
+
+## Framework Agnostic
+
+The MCP server works with any MCP-compatible client:
+
+- Claude Desktop
+- Claude Code
+- Cursor
+- Custom MCP clients
+- Any tool implementing the MCP protocol
+
+See [MCP Setup](/mcp-reference/setup) for configuration instructions.

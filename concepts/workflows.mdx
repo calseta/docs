@@ -1,0 +1,134 @@
+---
+title: "Workflows"
+description: "Sandboxed Python automations and custom HTTP endpoints that agents can discover and trigger."
+---
+
+Workflows are automated response actions that agents can discover and trigger via API or MCP. Calseta supports two workflow types: **sandboxed Python functions** for logic that runs inside the platform, and **custom HTTP endpoints** for triggering external automation.
+
+## Sandboxed Python Workflows
+
+Each Python workflow is an `async def run()` function that receives a `WorkflowContext` and returns a `WorkflowResult`:
+
+```python
+async def run(ctx: WorkflowContext) -> WorkflowResult:
+    ip = ctx.indicator.value
+    resp = await ctx.http.post(
+        "https://firewall.internal/api/block",
+        json={"ip": ip}
+    )
+    if resp.status_code == 200:
+        return WorkflowResult.ok(
+            message=f"Blocked {ip}",
+            data={"status": resp.status_code}
+        )
+    return WorkflowResult.fail(
+        message=f"Failed to block {ip}: {resp.status_code}"
+    )
+```
+
+### WorkflowContext
+
+The context object provides everything a workflow needs:
+
+| Property | Description |
+|----------|-------------|
+| `indicator` | The indicator being acted on (type, value, enrichment results) |
+| `alert` | The alert that triggered the workflow |
+| `http` | Pre-configured `httpx.AsyncClient` for HTTP requests |
+| `log` | Structured logger for execution steps |
+| `secrets` | Access to configured secrets (API keys, tokens) |
+| `integrations` | Access to configured integration clients |
+
+### WorkflowResult
+
+Every workflow returns a result — never raises an exception:
+
+```python
+WorkflowResult.ok(message="Success", data={"key": "value"})
+WorkflowResult.fail(message="Failed because...")
+```
+
+### Code Safety
+
+Workflow code is validated via AST analysis at save time:
+
+- **Allowed:** Python standard library, `calseta.workflows`
+- **Blocked:** Third-party packages, file system access, subprocess calls
+
+Workflows interact with external systems exclusively through `ctx.http`.
+
+## Custom HTTP Endpoint Workflows
+
+For automation that lives outside Calseta — Azure Logic Apps, AWS Lambda functions, n8n workflows, or any HTTP-accessible service — create an HTTP endpoint workflow. Calseta calls your endpoint with the alert and indicator context, and your service performs the action.
+
+This pattern is useful for:
+- Triggering Logic Apps that interact with internal systems
+- Calling Lambda functions that access cloud-specific resources
+- Integrating with ticketing systems, chat platforms, or custom tooling
+- Any automation that needs dependencies beyond Python's standard library
+
+The workflow `documentation` field describes what the endpoint does, so agents can discover and reason about it alongside sandboxed workflows.
+
+## Workflow States
+
+| State | Description |
+|-------|-------------|
+| `draft` | Under development, cannot be executed |
+| `active` | Available for execution |
+| `inactive` | Disabled, cannot be executed |
+
+## Human-in-the-Loop Approval
+
+Workflows can require human approval before execution. When an agent triggers an approval-required workflow, Calseta creates a pending approval request instead of executing immediately.
+
+```json
+{
+  "requires_approval": true,
+  "approval_channel": "#soc-approvals",
+  "approval_timeout_seconds": 3600,
+  "risk_level": "high"
+}
+```
+
+### Approval Flow
+
+1. Agent calls `execute_workflow` with `reason` and `confidence`
+2. Calseta creates an approval request and notifies the configured channel
+3. A human approves or rejects via REST API or Slack buttons
+4. If approved, the workflow is queued for execution
+5. If rejected or expired, no action is taken
+
+<Info>
+The approval gate only fires when `trigger_source=agent`. Human-triggered executions via the REST API bypass the gate entirely.
+</Info>
+
+### Notification Channels
+
+| Channel | Interactive | Configuration |
+|---------|-------------|---------------|
+| Slack | Yes (approve/reject buttons) | `APPROVAL_NOTIFIER=slack` |
+| Teams | No (links to REST endpoints) | `APPROVAL_NOTIFIER=teams` |
+| None | — | `APPROVAL_NOTIFIER=none` (default) |
+
+## Version History
+
+Every code change increments `code_version` and creates a version history entry. Workflow runs record which version was executed, providing a complete audit trail.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/workflows` | List workflows |
+| `GET` | `/v1/workflows/{uuid}` | Get a workflow |
+| `POST` | `/v1/workflows` | Create a workflow |
+| `PATCH` | `/v1/workflows/{uuid}` | Update a workflow |
+| `POST` | `/v1/workflows/{uuid}/execute` | Execute a workflow |
+| `GET` | `/v1/workflows/{uuid}/runs` | List runs |
+| `POST` | `/v1/workflow-approvals/{uuid}/approve` | Approve |
+| `POST` | `/v1/workflow-approvals/{uuid}/reject` | Reject |
+
+## MCP Access
+
+- **Resource:** `calseta://workflows` — list active workflows
+- **Resource:** `calseta://workflows/{uuid}` — get a workflow
+- **Tool:** `execute_workflow` — trigger execution (always agent-triggered)

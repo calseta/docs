@@ -1,6 +1,65 @@
 ---
-title: "Context Documents Resource"
-description: "Read reference documents into your AI agent's context."
+title: "Context Documents"
+description: "MCP resources for reading organizational context documents."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+## calseta://context-documents
+
+Returns all context documents (runbooks, IR plans, SOPs, playbooks).
+
+**Example response:**
+
+```json
+[
+  {
+    "uuid": "cd-abc123-...",
+    "title": "Identity Incident Response Runbook",
+    "doc_type": "runbook",
+    "targeting_rules": {
+      "match_any": [
+        { "field": "source_name", "operator": "eq", "value": "sentinel" }
+      ]
+    },
+    "content": "## Scope\nThis runbook covers all identity-related security incidents..."
+  }
+]
+```
+
+---
+
+## calseta://context-documents/{uuid}
+
+Returns a single context document with full content.
+
+**URI parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `uuid` | string | The document's unique identifier |
+
+**Example response:**
+
+```json
+{
+  "uuid": "cd-abc123-...",
+  "title": "Identity Incident Response Runbook",
+  "doc_type": "runbook",
+  "content": "## Scope\nThis runbook covers all identity-related security incidents.\n\n## Escalation\n1. Notify #security-incidents Slack channel\n2. Page on-call security engineer if severity >= High\n3. Engage legal if data exposure suspected\n\n## Remediation Steps\n...",
+  "targeting_rules": {
+    "match_any": [
+      { "field": "source_name", "operator": "eq", "value": "sentinel" }
+    ],
+    "match_all": [
+      { "field": "severity", "operator": "in", "values": ["High", "Critical"] }
+    ]
+  }
+}
+```
+
+<Info>
+To get context documents matched to a specific alert, use `calseta://alerts/{uuid}/context` instead. That resource evaluates targeting rules and returns only matching documents.
+</Info>
+
+## Required Scope
+
+`alerts:read`

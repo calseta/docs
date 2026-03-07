@@ -1,0 +1,133 @@
+---
+title: "Community Integrations"
+description: "Contribute alert source plugins and enrichment providers to Calseta."
+---
+
+Calseta welcomes community-contributed integrations. There are two types of contributions: alert source plugins (code) and enrichment provider configurations (runtime-configurable, no code required).
+
+## Alert Source Plugins
+
+Alert source plugins require Python code. They live in `app/integrations/community/` and follow the same `AlertSourceBase` interface as builtin sources.
+
+### Contribution Process
+
+1. **Research first** — create `docs/integrations/{name}/api_notes.md` documenting the source API
+2. **Implement the plugin** — create `app/integrations/community/{name}.py` implementing `AlertSourceBase`
+3. **Write tests** — create `tests/test_community_{name}.py` with validation, normalization, and indicator extraction tests
+4. **Open a PR** targeting the `main` branch
+
+### Plugin Location
+
+Community plugins go in `app/integrations/community/`, not `app/integrations/sources/`. This keeps the distinction between officially supported and community-maintained integrations clear.
+
+```
+app/integrations/
+  sources/          # Builtin: Sentinel, Elastic, Splunk, Generic
+  community/        # Community-contributed plugins
+    crowdstrike.py
+    palo_alto.py
+    ...
+```
+
+### Requirements
+
+- [ ] API notes committed to `docs/integrations/{name}/api_notes.md`
+- [ ] Plugin implements `AlertSourceBase` (validate, normalize, extract_indicators)
+- [ ] Severity mapping follows Calseta conventions (Pending/Informational/Low/Medium/High/Critical)
+- [ ] Indicator extraction covers the source's primary IOC fields
+- [ ] Tests with realistic sample payloads
+- [ ] No external dependencies beyond the standard library and httpx
+
+## Enrichment Provider Configs
+
+Enrichment providers are runtime-configurable — no code needed. Contributions are JSON configuration files that can be imported via the API or added as seeds.
+
+### Contribution Process
+
+1. **Research the API** — document in `docs/integrations/{name}/api_notes.md`
+2. **Create the configuration** — a JSON file with HTTP config, malice rules, and field extractions
+3. **Test against the real API** — verify the config works with actual data
+4. **Open a PR** with the configuration and API notes
+
+### Example Configuration
+
+```json
+{
+  "provider_name": "shodan",
+  "display_name": "Shodan",
+  "supported_indicator_types": ["ip"],
+  "http_config": {
+    "steps": [{
+      "method": "GET",
+      "url": "https://api.shodan.io/shodan/host/{{value}}",
+      "params": { "key": "{{auth_token}}" }
+    }]
+  },
+  "auth_type": "api_key",
+  "malice_rules": {
+    "conditions": [
+      { "field": "tags", "operator": "contains", "value": "malware", "verdict": "Malicious" }
+    ],
+    "default_verdict": "Benign"
+  },
+  "field_extractions": [
+    { "source_path": "os", "target_key": "operating_system", "value_type": "string" },
+    { "source_path": "ports", "target_key": "open_ports", "value_type": "array" },
+    { "source_path": "org", "target_key": "organization", "value_type": "string" },
+    { "source_path": "tags", "target_key": "tags", "value_type": "array" }
+  ]
+}
+```
+
+### Requirements
+
+- [ ] API notes committed to `docs/integrations/{name}/api_notes.md`
+- [ ] HTTP config uses template variables correctly (`{{value}}`, `{{auth_token}}`)
+- [ ] Malice rules map to Calseta's verdict enum (Benign/Suspicious/Malicious)
+- [ ] Field extractions cover the most useful fields for agent reasoning
+- [ ] Tested against the real API with sample data
+- [ ] Documented any rate limits or API key requirements
+
+## Claude Code Skills
+
+If you use [Claude Code](https://claude.com/claude-code), the Calseta repository includes built-in skills that automate the scaffolding process:
+
+### For Alert Source Plugins
+
+```
+/new-alert-source crowdstrike
+```
+
+This skill automatically:
+- Researches the source's API documentation
+- Creates `docs/integrations/{name}/api_notes.md`
+- Scaffolds the plugin file implementing `AlertSourceBase`
+- Registers the plugin and sets up tests
+
+### For Enrichment Providers
+
+```
+/new-enrichment-provider shodan
+```
+
+This skill automatically:
+- Researches the provider's API documentation
+- Creates `docs/integrations/{name}/api_notes.md`
+- Builds the HTTP config, malice rules, and field extractions
+- Generates either a builtin seed entry or community config files
+
+<Tip>
+These skills live in `.claude/commands/` in the [Calseta repository](https://github.com/calseta/calseta). They're available automatically when you open the repo in Claude Code.
+</Tip>
+
+## General Guidelines
+
+- **One integration per PR** — keeps reviews focused
+- **Include sample payloads** — in tests or as fixtures
+- **Document edge cases** — in the API notes file
+- **Follow existing patterns** — look at builtin implementations for reference
+- **No secrets in PRs** — use environment variable references, never hardcode API keys
+
+## Getting Help
+
+If you're unsure about an integration approach, open a GitHub issue describing the source or provider you want to add. The maintainers can provide guidance on field mappings, severity mapping, and indicator extraction strategies.

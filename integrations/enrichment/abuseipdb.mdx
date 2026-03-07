@@ -1,0 +1,84 @@
+---
+title: "AbuseIPDB"
+description: "Enrich IP addresses with abuse confidence scores using AbuseIPDB."
+---
+
+AbuseIPDB is a community-driven IP abuse reporting database. It provides abuse confidence scores and category classifications for IP addresses.
+
+## Supported Indicator Types
+
+| Type | AbuseIPDB Endpoint |
+|------|---------------------|
+| `ip` | `GET /api/v2/check` |
+
+## Configuration
+
+Set your AbuseIPDB API key in the `.env` file:
+
+```env
+ABUSEIPDB_API_KEY=your-abuseipdb-api-key
+```
+
+<Info>
+AbuseIPDB offers free API keys with 1,000 checks/day. Premium plans increase limits. Calseta caches results to minimize API usage.
+</Info>
+
+## Extracted Fields
+
+| Field | Description |
+|-------|-------------|
+| `abuse_confidence_score` | 0-100 confidence that the IP is abusive |
+| `total_reports` | Total abuse reports filed against this IP |
+| `num_distinct_users` | Number of distinct reporters |
+| `is_whitelisted` | Whether the IP is on AbuseIPDB's whitelist |
+| `isp` | Internet service provider |
+| `domain` | Reverse DNS domain |
+| `country_code` | Country code |
+| `usage_type` | Type of IP usage (e.g., `Data Center/Web Hosting/Transit`) |
+| `last_reported_at` | Timestamp of most recent report |
+
+## Malice Rules
+
+Default verdict thresholds:
+
+| Condition | Verdict |
+|-----------|---------|
+| `abuse_confidence_score >= 80` | `Malicious` |
+| `abuse_confidence_score >= 25` | `Suspicious` |
+| Enrichment successful, score < 25 | `Benign` |
+
+These thresholds are configurable via the enrichment provider's `malice_rules` field.
+
+## Cache TTL
+
+| Indicator Type | Default TTL |
+|----------------|-------------|
+| IP | 1 hour |
+
+## Rate Limits
+
+| Plan | Checks/Day |
+|------|------------|
+| Free | 1,000 |
+| Basic | 10,000 |
+| Premium | 100,000+ |
+
+## Example Enrichment Result
+
+```json
+{
+  "abuseipdb": {
+    "extracted": {
+      "abuse_confidence_score": 97,
+      "total_reports": 342,
+      "num_distinct_users": 89,
+      "country_code": "RU",
+      "isp": "Example Hosting Ltd",
+      "usage_type": "Data Center/Web Hosting/Transit",
+      "last_reported_at": "2025-01-15T09:45:00Z"
+    },
+    "success": true,
+    "enriched_at": "2025-01-15T10:30:04Z"
+  }
+}
+```

@@ -1,0 +1,107 @@
+---
+title: "How It Works"
+description: "The five-step pipeline: ingest, normalize, enrich, contextualize, dispatch."
+---
+
+Every alert that enters Calseta passes through five deterministic steps before an agent sees it. No LLM tokens are consumed during this pipeline — it runs entirely in the platform.
+
+## The Pipeline
+
+{/* TODO: Replace with exported diagram image */}
+<Frame>
+  <img src="/images/pipeline-diagram.png" alt="Calseta five-step pipeline: Ingest → Normalize → Enrich → Contextualize → Dispatch" />
+</Frame>
+
+### 1. Ingest
+
+Alerts arrive via webhook at `POST /v1/ingest/{source_name}`. Each source integration validates the raw payload and hands it off to normalization. The endpoint returns `202 Accepted` within 200ms — all downstream processing is async.
+
+Supported sources: [Microsoft Sentinel](/integrations/alert-sources/microsoft-sentinel), [Elastic Security](/integrations/alert-sources/elastic), [Splunk](/integrations/alert-sources/splunk), [Generic webhook](/integrations/alert-sources/generic-webhook).
+
+### 2. Normalize
+
+All alerts are normalized to Calseta's agent-native schema — clean field names designed for AI consumption (`title`, `severity`, `occurred_at`, `source_name`). Source-specific fields that don't map are preserved in `raw_payload`. Normalization happens synchronously at ingest time.
+
+<Info>
+Calseta uses its own schema optimized for agent consumption, not OCSF. OCSF is designed for data producers mapping to SIEMs. Calseta's schema gives agents readable field names, structured enrichment data, and a relational indicator model.
+</Info>
+
+### 3. Enrich
+
+Threat indicators extracted from the alert (IPs, domains, file hashes, URLs, accounts) are enriched by all configured providers in parallel. Results are cached with provider-specific TTLs. A slow or failing provider never blocks others.
+
+Indicator extraction runs in three passes:
+1. **Source plugin** — hardcoded extraction logic per source
+2. **System mappings** — normalized field mappings (pre-seeded)
+3. **Custom mappings** — user-defined per-source field mappings against `raw_payload`
+
+Results are deduplicated by `(type, value)`. Each unique indicator is a global entity — the same IP across 50 alerts is one indicator row with enrichment results, linked to all 50 alerts.
+
+### 4. Contextualize
+
+Relevant organizational documents are attached to the alert based on [targeting rules](/concepts/context-documents#targeting-rules). Documents can be global (always included) or targeted to specific alert types, severities, source names, or detection rules.
+
+Context includes: runbooks, IR plans, SOPs, detection rule documentation, and workflow documentation.
+
+### 5. Dispatch
+
+Once enrichment is complete, the enriched alert payload is dispatched to registered agents via webhook. The payload includes everything an agent needs:
+
+```json
+{
+  "event": "alert.enriched",
+  "alert": {
+    "uuid": "9f2a-b3c1-...",
+    "title": "Impossible Travel Detected",
+    "severity": "High",
+    "source": "sentinel"
+  },
+  "indicators": [
+    {
+      "type": "ip",
+      "value": "185.220.101.47",
+      "malice": "Malicious",
+      "enrichment_results": {
+        "virustotal": { "extracted": { "malicious_count": 14 } },
+        "abuseipdb": { "extracted": { "abuse_confidence_score": 97 } }
+      }
+    }
+  ],
+  "detection_rule": {
+    "name": "Suspicious Auth v2",
+    "mitre_tactics": ["TA0001"],
+    "documentation": "## Overview\nDetects impossible travel..."
+  },
+  "context_documents": [
+    { "title": "Identity IR Runbook", "content": "..." }
+  ],
+  "workflows": [
+    { "name": "Revoke User Session", "documentation": "..." }
+  ]
+}
+```
+
+Agents can also pull alerts at any time via [REST API](/api-reference/overview) or [MCP](/mcp-reference/overview). Humans can view and manage alerts through the [web UI](/concepts/ui).
+
+---
+
+## Architecture
+
+{/* TODO: Replace with exported architecture diagram image */}
+<Frame>
+  <img src="/images/architecture-diagram.png" alt="Calseta architecture: API server, MCP server, PostgreSQL, Worker process" />
+</Frame>
+
+The API server and worker share no in-memory state — only the database. All async work is enqueued to a durable task queue (PostgreSQL-backed via procrastinate) before the originating HTTP request returns.
+
+| Layer | Technology |
+|-------|------------|
+| Language | Python 3.12+ |
+| Web framework | FastAPI |
+| Validation | Pydantic v2 |
+| Database | PostgreSQL 15+ |
+| ORM | SQLAlchemy 2.0 async |
+| Task queue | procrastinate + PostgreSQL |
+| MCP server | Anthropic MCP Python SDK |
+| Auth | API keys (`cai_` prefix) |
+| Frontend | React + Vite (port 5173) |

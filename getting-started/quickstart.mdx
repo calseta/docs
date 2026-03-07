@@ -1,0 +1,112 @@
+---
+title: 'Quickstart'
+description: 'Get Calseta running locally in under 5 minutes'
+---
+
+<Info>
+  **Calseta is under active development.** APIs and features may change. We welcome feedback and contributions on [GitHub](https://github.com/calseta/calseta).
+</Info>
+
+## Run Calseta locally
+
+```bash
+git clone https://github.com/calseta/calseta.git
+cd calseta
+cp .env.local.example .env
+docker compose up
+```
+
+That's it. The platform starts three services:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| FastAPI server | 8000 | REST API for alerts, enrichment, workflows, and more |
+| MCP server | 8001 | Model Context Protocol server for AI agents |
+| UI | 5173 | Web dashboard for alert management and configuration |
+| PostgreSQL | 5432 | Primary store and task queue |
+
+## Try the Lab
+
+The lab is a fully seeded demo environment with sample alerts, enrichment data, and a full-access API key. It's the fastest way to explore Calseta's capabilities:
+
+```bash
+make lab
+```
+
+This seeds 5 alerts with enriched indicators, detection rules with full documentation, context documents, and workflows. A pre-configured API key is printed at the end:
+
+```bash
+curl -H "Authorization: Bearer cai_lab_demo_full_access_key_not_for_prod" \
+  http://localhost:8000/v1/alerts
+```
+
+<Tip>
+Use `make lab-reset` to wipe and re-seed from scratch. Use `make lab-stop` to stop all services.
+</Tip>
+
+## Create an API key
+
+For non-lab usage, create your own API key:
+
+```bash
+docker compose exec api python -m app.cli.create_api_key \
+  --name "My Agent" \
+  --scopes "alerts:read,alerts:write,workflows:read,workflows:execute"
+```
+
+<Warning>
+Save the returned key immediately — it cannot be retrieved after creation.
+</Warning>
+
+## Open the UI
+
+Once services are running, open [http://localhost:5173](http://localhost:5173) in your browser. The dashboard gives you a visual interface for managing alerts, configuring detection rules, enrichment providers, workflows, and more.
+
+{/* TODO: Add screenshot of the alert list page */}
+<Frame>
+  <img src="/images/ui-alert-list.png" alt="Calseta UI — Alert list view" />
+</Frame>
+
+<Tip>
+The UI is optional — everything it does is also available via the REST API and MCP server. Use whichever interface fits your workflow.
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="How It Works"
+    icon="diagram-project"
+    href="/getting-started/how-it-works"
+  >
+    Understand the five-step pipeline: ingest, normalize, enrich, contextualize, and dispatch.
+  </Card>
+  <Card
+    title="Authentication"
+    icon="key"
+    href="/concepts/authentication"
+  >
+    Create API keys and authenticate your requests.
+  </Card>
+  <Card
+    title="Alert Sources"
+    icon="bell"
+    href="/integrations/alert-sources/overview"
+  >
+    Connect Microsoft Sentinel, Elastic, Splunk, or a generic webhook.
+  </Card>
+  <Card
+    title="UI Dashboard"
+    icon="browser"
+    href="/concepts/ui"
+  >
+    Explore the web dashboard for alert management and settings.
+  </Card>
+  <Card
+    title="MCP Setup"
+    icon="plug"
+    href="/mcp-reference/setup"
+  >
+    Connect your AI agent to Calseta via the MCP server.
+  </Card>
+</CardGroup>

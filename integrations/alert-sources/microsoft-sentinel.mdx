@@ -1,0 +1,100 @@
+---
+title: "Microsoft Sentinel"
+description: "Forward alerts from Microsoft Sentinel to Calseta via webhook."
+---
+
+Microsoft Sentinel is an Azure-native cloud SIEM. Calseta receives Sentinel alerts via webhook, normalizes them to the agent-native schema, and enriches all extracted indicators.
+
+## Ingestion Endpoint
+
+```
+POST /v1/ingest/sentinel
+```
+
+## Setting Up the Webhook
+
+### Option 1: Logic App (Recommended)
+
+1. In the Azure portal, create a new Logic App
+2. Add a trigger: **When Azure Sentinel alert is triggered**
+3. Add an action: **HTTP POST**
+   - URL: `https://your-calseta-host/v1/ingest/sentinel`
+   - Headers: `Authorization: Bearer cai_your_api_key`
+   - Body: Select the full alert JSON from the trigger output
+4. Enable the Logic App
+
+### Option 2: Automation Rule
+
+1. In Sentinel, go to **Automation** → **Automation rules**
+2. Create a new rule with conditions matching the alerts you want to forward
+3. Add an action: **Run playbook** (use a Logic App with the HTTP POST action above)
+
+## Payload Format
+
+Calseta expects the standard Sentinel alert JSON structure. Key fields mapped during normalization:
+
+| Sentinel Field | Calseta Field |
+|----------------|---------------|
+| `properties.alertDisplayName` | `title` |
+| `properties.severity` | `severity` |
+| `properties.timeGenerated` | `occurred_at` |
+| `properties.description` | Stored in `raw_payload` |
+| `properties.tactics` | Mapped to detection rule `mitre_tactics` |
+| `properties.techniques` | Mapped to detection rule `mitre_techniques` |
+
+### Severity Mapping
+
+| Sentinel | Calseta |
+|----------|---------|
+| `Informational` | `Informational` (1) |
+| `Low` | `Low` (2) |
+| `Medium` | `Medium` (3) |
+| `High` | `High` (4) |
+
+## Indicator Extraction
+
+The Sentinel plugin extracts indicators from:
+
+- `properties.entities` — Sentinel's parsed entities (IPs, accounts, hosts, file hashes)
+- Alert description and custom fields via system normalized-field mappings
+- Custom per-source field mappings you define against `raw_payload`
+
+## Webhook Signature Verification
+
+Set `SENTINEL_WEBHOOK_SECRET` in your `.env` file to enable signature verification. Configure the same secret in your Logic App's HTTP action.
+
+## Example Payload
+
+```json
+{
+  "properties": {
+    "alertDisplayName": "Impossible Travel Activity",
+    "severity": "High",
+    "timeGenerated": "2025-01-15T10:28:00Z",
+    "description": "Sign-in from two distant locations within 10 minutes",
+    "tactics": ["InitialAccess"],
+    "techniques": ["T1078"],
+    "entities": [
+      {
+        "$id": "1",
+        "Type": "ip",
+        "Address": "185.220.101.47"
+      },
+      {
+        "$id": "2",
+        "Type": "account",
+        "Name": "jsmith",
+        "UPNSuffix": "company.com"
+      }
+    ]
+  }
+}
+```
+
+## Rate Limits
+
+Sentinel Logic Apps can fire rapidly during alert storms. Calseta handles this via rate limiting — configure `RATE_LIMIT_INGEST_PER_MINUTE` if you need to adjust the default.
+
+## API Reference
+
+See [Ingest Alert](/api-reference/alerts/ingest) for the full endpoint documentation.

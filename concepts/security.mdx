@@ -1,0 +1,103 @@
+---
+title: "Security"
+description: "Built-in security features that ship with every Calseta deployment."
+---
+
+Calseta ships with a security stack enabled by default. Secure defaults are on out of the box — deployers opt out of protections, not in.
+
+## Authentication
+
+All API and MCP requests require an API key in the `Authorization: Bearer cai_...` header. Keys are:
+
+- **Hashed with bcrypt** — only the `key_prefix` (first 8 characters) is stored in plaintext for display
+- **Shown once** — the full key is returned only at creation time and cannot be retrieved
+- **Scoped** — each key has a set of scopes that restrict what it can access (`alerts:read`, `alerts:write`, `workflows:execute`, `approvals:write`, `admin`, etc.)
+- **Expirable** — keys can be set to expire after a specified duration
+
+## Encryption at Rest
+
+Enrichment provider auth credentials (API keys, tokens, secrets) are encrypted at rest using the `ENCRYPTION_KEY` environment variable. Credentials are decrypted only at the moment of use during enrichment execution.
+
+## Rate Limiting
+
+Built-in rate limiting via `slowapi`, applied to all endpoints:
+
+| Scope | Default | Configuration |
+|-------|---------|---------------|
+| Authenticated requests | 60/min per API key | `RATE_LIMIT_DEFAULT_PER_MINUTE` |
+| Unauthenticated requests | 10/min per IP | `RATE_LIMIT_UNAUTHED_PER_MINUTE` |
+| Ingestion endpoint | 120/min per API key | `RATE_LIMIT_INGEST_PER_MINUTE` |
+
+All `429 Too Many Requests` responses include a `Retry-After` header.
+
+When deployed behind a reverse proxy, set `TRUSTED_PROXY_COUNT` so rate limiting reads the correct client IP from `X-Forwarded-For`. Without this, all requests appear to come from the proxy IP.
+
+## Security Headers
+
+A `SecurityHeadersMiddleware` applies security headers to all responses:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Strict-Transport-Security` (when `HTTPS_ENABLED=true`)
+- `Content-Security-Policy`
+
+## Request Body Size Limits
+
+Enforced before route handlers process the request:
+
+| Limit | Default | Configuration |
+|-------|---------|---------------|
+| General requests | 10 MB | `MAX_REQUEST_BODY_SIZE_MB` |
+| Ingestion payloads | 5 MB | `MAX_INGEST_PAYLOAD_SIZE_MB` |
+
+## CORS
+
+CORS is **disabled by default**. Enable it only if you need browser-based access:
+
+```env
+CORS_ALLOWED_ORIGINS=https://soc.yourcompany.com
+```
+
+## Webhook Signature Verification
+
+Inbound webhooks from source systems can be verified using HMAC signatures. Each source has its own signature header and secret:
+
+| Source | Signature Header | Secret Env Var |
+|--------|-----------------|----------------|
+| Sentinel | `X-Webhook-Signature` | `SENTINEL_WEBHOOK_SECRET` |
+| Elastic | `X-Webhook-Signature` | `ELASTIC_WEBHOOK_SECRET` |
+| Splunk | `X-Splunk-Signature` | `SPLUNK_WEBHOOK_SECRET` |
+
+Signature comparisons use `hmac.compare_digest()` to prevent timing attacks.
+
+## Auth Failure Logging
+
+All authentication failures are logged with structured context in a single location (`app/auth/audit.py`). Log entries include:
+
+- Timestamp
+- Request path and method
+- Client IP
+- Key prefix (if provided)
+- Failure reason
+
+With `LOG_FORMAT=json`, these entries are machine-parseable for ingestion into your SIEM.
+
+## Secrets Management
+
+By default, secrets are read from environment variables or a `.env` file. For production deployments, two cloud backends are supported:
+
+- **Azure Key Vault** — set `AZURE_KEY_VAULT_URL`, uses Managed Identity
+- **AWS Secrets Manager** — set `AWS_SECRETS_MANAGER_SECRET_NAME`, uses IAM roles
+
+Only one backend is active at a time. If neither is configured, the cloud SDKs are never imported.
+
+See [Self-Hosting](/operations/self-hosting#secrets-management) for configuration details.
+
+## Workflow Sandboxing
+
+Workflow code is validated via AST analysis at save time. Only Python standard library and `calseta.workflows` imports are allowed. File system access, subprocess calls, and third-party packages are blocked. All external interactions go through the provided `ctx.http` client.
+
+## API Key Source Restrictions
+
+API keys can be restricted to specific alert sources via `allowed_sources`. A key with `allowed_sources: ["sentinel"]` can only ingest alerts through the Sentinel source — attempts to use other sources are rejected with `403 Forbidden`.

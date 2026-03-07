@@ -1,0 +1,103 @@
+---
+title: "Okta"
+description: "Enrich user accounts with identity context from Okta."
+---
+
+Okta enrichment provides identity context for user accounts — group membership, MFA status, account status, and recent activity. This context helps agents understand whether a flagged account is a high-privilege target, has MFA enabled, or shows signs of compromise.
+
+## Supported Indicator Types
+
+| Type | Okta Endpoint |
+|------|---------------|
+| `account` | `GET /api/v1/users/{userId}` + related endpoints |
+
+## Configuration
+
+Set your Okta credentials in the `.env` file:
+
+```env
+OKTA_DOMAIN=company.okta.com
+OKTA_API_TOKEN=your-okta-api-token
+```
+
+<Info>
+Okta API tokens can be created in the Okta admin console under **Security** → **API** → **Tokens**. Use a service account with read-only permissions.
+</Info>
+
+## Extracted Fields
+
+| Field | Description |
+|-------|-------------|
+| `status` | Account status (`ACTIVE`, `SUSPENDED`, `DEPROVISIONED`, etc.) |
+| `created` | Account creation date |
+| `last_login` | Last successful login timestamp |
+| `groups` | List of group names the user belongs to |
+| `mfa_enrolled` | Whether the user has MFA factors enrolled |
+| `mfa_factors` | List of enrolled MFA factor types |
+| `is_admin` | Whether the user has admin privileges |
+| `department` | User's department |
+| `title` | User's job title |
+
+## Malice Rules
+
+Okta enrichment doesn't set malice verdicts by default — it provides identity context rather than threat intelligence. The malice verdict for account indicators is typically driven by the overall investigation context rather than the identity lookup alone.
+
+You can configure custom malice rules if needed:
+
+```json
+{
+  "malice_rules": {
+    "conditions": [
+      {
+        "field": "status",
+        "operator": "eq",
+        "value": "SUSPENDED",
+        "verdict": "Suspicious"
+      }
+    ]
+  }
+}
+```
+
+## Cache TTL
+
+| Indicator Type | Default TTL |
+|----------------|-------------|
+| Account | 1 hour |
+
+## Account Matching
+
+The Okta provider matches account indicators by:
+
+1. Email address (`user@company.com`)
+2. Username (`jsmith`)
+3. Okta user ID
+
+<Tip>
+For best results, ensure your alert sources extract account indicators in email format (`user@domain.com`). This provides the most reliable match against Okta's user directory.
+</Tip>
+
+## Example Enrichment Result
+
+```json
+{
+  "okta": {
+    "extracted": {
+      "status": "ACTIVE",
+      "last_login": "2025-01-15T08:30:00Z",
+      "groups": ["Engineering", "VPN Users", "AWS Admins"],
+      "mfa_enrolled": true,
+      "mfa_factors": ["push", "totp"],
+      "is_admin": false,
+      "department": "Engineering",
+      "title": "Senior Developer"
+    },
+    "success": true,
+    "enriched_at": "2025-01-15T10:30:06Z"
+  }
+}
+```
+
+## Rate Limits
+
+Okta rate limits vary by endpoint and org type. The user lookup endpoint typically allows 600 requests/minute. Calseta's caching ensures repeated lookups for the same account don't consume additional API calls.

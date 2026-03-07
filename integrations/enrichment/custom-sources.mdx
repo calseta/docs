@@ -1,0 +1,215 @@
+---
+title: "Custom Enrichment Sources"
+description: "Use Logic Apps, Lambda functions, or any HTTP endpoint as a custom enrichment source."
+---
+
+Calseta's enrichment system is runtime-configurable — you can add any HTTP-accessible service as an enrichment provider without writing code. This makes it straightforward to use Azure Logic Apps, AWS Lambda functions, or internal APIs as custom enrichment sources.
+
+## The Pattern
+
+1. **Build an HTTP endpoint** (Logic App, Lambda, internal API) that accepts an indicator and returns structured data
+2. **Register it as a provider** in Calseta via the REST API
+3. **Configure field extractions** to tell Calseta which fields to surface to agents
+4. **Configure malice rules** to map response fields to verdicts
+
+Your endpoint does the heavy lifting — querying internal databases, calling proprietary APIs, running custom logic. Calseta handles the orchestration: calling your endpoint during enrichment, caching results, extracting fields, and setting verdicts.
+
+## Example: Internal Threat Intel via Logic App
+
+Suppose you have an internal threat intel database exposed through an Azure Logic App. The Logic App accepts an IP address and returns context from your internal systems.
+
+### Step 1: Build the Logic App
+
+Your Logic App accepts a POST request with the indicator value and returns JSON:
+
+**Request:**
+```json
+POST https://your-logic-app.azurewebsites.net/api/lookup
+{
+  "indicator_type": "ip",
+  "value": "185.220.101.47"
+}
+```
+
+**Response:**
+```json
+{
+  "found": true,
+  "risk_score": 85,
+  "internal_hits": 12,
+  "first_seen_internal": "2024-11-03T14:22:00Z",
+  "tags": ["known-scanner", "blocklist-candidate"],
+  "source": "internal-threatintel-db"
+}
+```
+
+### Step 2: Register the Provider
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichment-providers \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider_name": "internal_threat_intel",
+    "display_name": "Internal Threat Intel",
+    "supported_indicator_types": ["ip", "domain"],
+    "http_config": {
+      "steps": [{
+        "method": "POST",
+        "url": "https://your-logic-app.azurewebsites.net/api/lookup",
+        "headers": {
+          "Content-Type": "application/json",
+          "x-api-key": "{{auth_token}}"
+        },
+        "body": {
+          "indicator_type": "{{type}}",
+          "value": "{{value}}"
+        }
+      }]
+    },
+    "auth_config": {
+      "token": "your-logic-app-api-key"
+    },
+    "malice_rules": {
+      "conditions": [
+        { "field": "risk_score", "operator": "gte", "value": 80, "verdict": "Malicious" },
+        { "field": "risk_score", "operator": "gte", "value": 40, "verdict": "Suspicious" },
+        { "field": "found", "operator": "eq", "value": false, "verdict": "Benign" }
+      ],
+      "default_verdict": "Benign"
+    },
+    "cache_ttl_by_type": {
+      "ip": 1800,
+      "domain": 3600
+    }
+  }'
+```
+
+### Step 3: Configure Field Extractions
+
+Tell Calseta which fields from your Logic App's response to surface to agents:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider_name": "internal_threat_intel",
+    "indicator_type": "ip",
+    "source_path": "risk_score",
+    "target_key": "risk_score",
+    "value_type": "integer",
+    "description": "Internal risk score (0-100)"
+  }'
+```
+
+Repeat for each field you want agents to see:
+
+```bash
+# Internal hit count
+curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -d '{
+    "provider_name": "internal_threat_intel",
+    "indicator_type": "ip",
+    "source_path": "internal_hits",
+    "target_key": "internal_hits",
+    "value_type": "integer",
+    "description": "Number of times seen in internal logs"
+  }'
+
+# Tags
+curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -d '{
+    "provider_name": "internal_threat_intel",
+    "indicator_type": "ip",
+    "source_path": "tags",
+    "target_key": "tags",
+    "value_type": "array",
+    "description": "Internal classification tags"
+  }'
+```
+
+### Step 4: Test It
+
+Trigger on-demand enrichment:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichments \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -d '{"type": "ip", "value": "185.220.101.47"}'
+```
+
+Check the results:
+
+```bash
+curl http://localhost:8000/v1/enrichments/ip/185.220.101.47 \
+  -H "Authorization: Bearer cai_your_api_key"
+```
+
+The response includes your custom provider alongside builtins:
+
+```json
+{
+  "enrichment_results": {
+    "virustotal": {
+      "extracted": { "malicious_count": 14 },
+      "success": true
+    },
+    "internal_threat_intel": {
+      "extracted": {
+        "risk_score": 85,
+        "internal_hits": 12,
+        "tags": ["known-scanner", "blocklist-candidate"]
+      },
+      "success": true
+    }
+  }
+}
+```
+
+## Example: AWS Lambda for CMDB Lookup
+
+An AWS Lambda that checks your CMDB for asset context on IP addresses:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichment-providers \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -d '{
+    "provider_name": "cmdb_lookup",
+    "display_name": "CMDB Asset Lookup",
+    "supported_indicator_types": ["ip"],
+    "http_config": {
+      "steps": [{
+        "method": "GET",
+        "url": "https://abc123.execute-api.us-east-1.amazonaws.com/prod/lookup?ip={{value}}",
+        "headers": {
+          "x-api-key": "{{auth_token}}"
+        }
+      }]
+    },
+    "auth_config": {
+      "token": "your-api-gateway-key"
+    },
+    "malice_rules": {
+      "conditions": [],
+      "default_verdict": "Benign"
+    },
+    "cache_ttl_by_type": { "ip": 3600 }
+  }'
+```
+
+<Info>
+If your custom source provides context rather than threat intelligence (like a CMDB), set `default_verdict` to `"Benign"` with no conditions. The provider adds context without affecting malice verdicts.
+</Info>
+
+## Response Format Requirements
+
+Your endpoint must return valid JSON. Calseta's field extraction system uses dot-notation paths (`data.results.score`) to extract values from the response, so you can nest data however you like.
+
+If your endpoint returns an error (non-2xx status code), Calseta records `success: false` for that provider and moves on — it never blocks other providers.
+
+## What Agents See
+
+Agents receive the `extracted` fields from all providers — builtin and custom — in the same structure. Your internal threat intel data appears alongside VirusTotal and AbuseIPDB results, giving agents a complete picture without custom integration code.

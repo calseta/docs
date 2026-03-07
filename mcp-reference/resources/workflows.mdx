@@ -1,0 +1,54 @@
+---
+title: "Workflows"
+description: "MCP resources for workflow data"
+---
+
+## calseta://workflows
+
+Returns all active workflows with their documentation.
+
+**Example response:**
+
+```json
+[
+  {
+    "uuid": "wf-abc123-...",
+    "name": "Revoke User Session",
+    "state": "active",
+    "documentation": "## Overview\nRevokes all active sessions for a compromised user...",
+    "requires_approval": true,
+    "risk_level": "high"
+  }
+]
+```
+
+**Token optimization:** Only active workflows are returned. Code is excluded — agents receive documentation describing what the workflow does and when to trigger it, not implementation details.
+
+---
+
+## calseta://workflows/{uuid}
+
+Returns a single workflow with full documentation.
+
+**URI parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `uuid` | string | The workflow's unique identifier |
+
+**Example response:**
+
+```json
+{
+  "uuid": "wf-abc123-...",
+  "name": "Revoke User Session",
+  "state": "active",
+  "documentation": "## Overview\nRevokes all active sessions for a compromised user account.\n\n## When to Use\n- User account shows signs of compromise\n- Impossible travel detected\n- Credential exposure confirmed\n\n## What It Does\n1. Revokes all OAuth tokens\n2. Terminates active sessions\n3. Forces password reset",
+  "requires_approval": true,
+  "risk_level": "high"
+}
+```
+
+## Required Scope
+
+`workflows:read`

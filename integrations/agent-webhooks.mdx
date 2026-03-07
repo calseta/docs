@@ -1,0 +1,163 @@
+---
+title: "Agent Webhooks"
+description: "Register AI agents, understand the webhook payload, and post findings back."
+---
+
+Calseta pushes enriched alert data to your agents via webhooks. Register an agent endpoint, and Calseta will POST the full context payload whenever a matching alert completes enrichment.
+
+## Registering an Agent
+
+```bash
+curl -X POST http://localhost:8000/v1/agents \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Investigation Agent",
+    "webhook_url": "https://your-agent.example.com/webhook",
+    "auth_header": "Bearer your-agent-secret",
+    "trigger_filter": {
+      "min_severity": "High",
+      "source_names": ["sentinel", "elastic"]
+    }
+  }'
+```
+
+### Trigger Filters
+
+Control which alerts your agent receives:
+
+| Filter | Description |
+|--------|-------------|
+| `min_severity` | Minimum severity (`Informational`, `Low`, `Medium`, `High`, `Critical`) |
+| `source_names` | Only alerts from these sources |
+| `tags` | Only alerts with matching tags |
+
+Without filters, the agent receives all alerts.
+
+## Webhook Payload
+
+When an alert completes enrichment, Calseta POSTs a structured payload to each matching agent:
+
+```json
+{
+  "event": "alert.enriched",
+  "alert": {
+    "uuid": "9f2a-b3c1-...",
+    "title": "Impossible Travel Detected",
+    "severity": "High",
+    "source_name": "sentinel",
+    "status": "Open",
+    "occurred_at": "2025-01-15T10:28:00Z",
+    "tags": ["identity", "auth"],
+    "raw_payload": { "...": "original source data" },
+    "_metadata": {
+      "generated_at": "2025-01-15T10:30:05Z",
+      "alert_source": "sentinel",
+      "indicator_count": 3,
+      "enrichment": {
+        "succeeded": ["virustotal", "abuseipdb"],
+        "failed": [],
+        "enriched_at": "2025-01-15T10:30:05Z"
+      },
+      "detection_rule_matched": true,
+      "context_documents_applied": 2
+    }
+  },
+  "indicators": [
+    {
+      "type": "ip",
+      "value": "185.220.101.47",
+      "malice": "Malicious",
+      "enrichment_results": {
+        "virustotal": {
+          "extracted": { "malicious_count": 14, "country": "DE" }
+        },
+        "abuseipdb": {
+          "extracted": { "abuse_confidence_score": 97 }
+        }
+      }
+    }
+  ],
+  "detection_rule": {
+    "name": "Suspicious Auth - Impossible Travel",
+    "mitre_tactics": ["TA0001"],
+    "mitre_techniques": ["T1078"],
+    "documentation": "## Overview\nDetects impossible travel..."
+  },
+  "context_documents": [
+    {
+      "title": "Identity IR Runbook",
+      "doc_type": "runbook",
+      "content": "## Scope\n..."
+    }
+  ],
+  "workflows": [
+    {
+      "uuid": "wf-abc123-...",
+      "name": "Revoke User Session",
+      "documentation": "Revokes all active sessions...",
+      "requires_approval": true,
+      "risk_level": "high"
+    }
+  ]
+}
+```
+
+<Tip>
+The payload is designed for direct inclusion in an agent's context window. Every field is named for readability — no numeric codes or abbreviations that waste tokens on interpretation.
+</Tip>
+
+## Posting Findings Back
+
+After investigation, agents post their analysis back to the alert:
+
+```bash
+curl -X POST http://localhost:8000/v1/alerts/{uuid}/findings \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "summary": "Confirmed malicious login from Tor exit node",
+    "confidence": 0.95,
+    "recommended_actions": [
+      "Revoke all active sessions",
+      "Force password reset",
+      "Review recent file access"
+    ],
+    "details": {
+      "source_ip_analysis": "Known Tor exit node, 14/90 VT detections",
+      "user_risk": "No recent travel, MFA bypassed"
+    }
+  }'
+```
+
+## Updating Alert Status
+
+Agents can update alert status to reflect investigation progress:
+
+```bash
+curl -X PATCH http://localhost:8000/v1/alerts/{uuid} \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "Triaging"}'
+```
+
+Valid status transitions: `Open` → `Triaging` / `Escalated` → `Closed`
+
+## Two Integration Patterns
+
+### Push (Webhooks)
+Register an agent and receive alerts automatically. Best for real-time response.
+
+### Pull (REST / MCP)
+Query alerts on-demand. Best for batch processing or interactive investigation.
+
+Both patterns work together — register for webhooks and also query via REST/MCP as needed.
+
+## MCP Alternative
+
+If your agent supports MCP, it can access the same data without webhooks:
+
+- **Resources:** Read alerts, detection rules, context documents, enrichments
+- **Tools:** Post findings, update status, execute workflows, trigger enrichment
+
+See [MCP Setup](/mcp-reference/setup) for configuration.

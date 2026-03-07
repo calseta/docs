@@ -1,0 +1,118 @@
+---
+title: "Alert Schema"
+description: "The Calseta agent-native alert schema — every field, status, and lifecycle timestamp."
+---
+
+Every alert in Calseta is normalized to an **agent-native schema** — clean field names designed for AI consumption. Regardless of which source system sent the alert, agents always see the same structure.
+
+## Alert Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uuid` | string (UUID) | Unique identifier for the alert |
+| `title` | string | Alert title (from the source system) |
+| `severity` | string | `Pending`, `Informational`, `Low`, `Medium`, `High`, `Critical` |
+| `source_name` | string | Which source sent the alert (`sentinel`, `elastic`, `splunk`, `generic`) |
+| `status` | string | Investigation lifecycle state (see below) |
+| `enrichment_status` | string | System-managed enrichment state (see below) |
+| `occurred_at` | timestamp | When the event occurred (from the source system) |
+| `tags` | string[] | User-defined and source-derived tags |
+| `raw_payload` | object | Original source payload, preserved in full |
+| `acknowledged_at` | timestamp | Set on first transition out of `Open` |
+| `triaged_at` | timestamp | Set when entering `Triaging` |
+| `closed_at` | timestamp | Set when entering `Closed` |
+| `close_classification` | string | Classification when closing (e.g., `True Positive`, `False Positive`) |
+| `created_at` | timestamp | When Calseta received the alert |
+| `updated_at` | timestamp | Last modification time |
+
+## Alert Status
+
+The `status` field tracks the investigation lifecycle. Transitions are enforced by the API:
+
+```
+Open ──▶ Triaging ──▶ Closed
+  │                     ▲
+  ├──▶ Escalated ───────┘
+  │
+  └──▶ Closed
+```
+
+| Status | Description |
+|--------|-------------|
+| `Open` | New alert, not yet acknowledged |
+| `Triaging` | Under active investigation |
+| `Escalated` | Escalated to a human or team |
+| `Closed` | Investigation complete |
+
+### Lifecycle Timestamps
+
+These are set automatically by Calseta — they cannot be set via the API:
+
+- **`acknowledged_at`** — set on the first transition out of `Open` (to `Triaging`, `Escalated`, or `Closed`)
+- **`triaged_at`** — set when entering `Triaging`
+- **`closed_at`** — set when entering `Closed`
+
+## Enrichment Status
+
+The `enrichment_status` field is system-managed and tracks the enrichment pipeline progress. It is separate from `status` and cannot be set via the API.
+
+| Enrichment Status | Description |
+|-------------------|-------------|
+| `Pending` | Enrichment has not completed yet |
+| `Enriched` | All providers have returned results |
+| `Failed` | One or more providers failed |
+
+## Severity Levels
+
+| Severity | Description |
+|----------|-------------|
+| `Pending` | Severity not yet determined |
+| `Informational` | No action needed, for awareness only |
+| `Low` | Minor risk, investigate when time permits |
+| `Medium` | Moderate risk, investigate within SLA |
+| `High` | Significant risk, investigate promptly |
+| `Critical` | Severe risk, immediate investigation required |
+
+Source systems map their own severity values to these. Unknown or missing severity defaults to `Pending`.
+
+## Related Data
+
+Each alert links to additional data available via sub-endpoints:
+
+| Data | Endpoint | Description |
+|------|----------|-------------|
+| Indicators | `GET /v1/alerts/{uuid}/indicators` | Extracted IOCs with enrichment results and malice verdicts |
+| Context | `GET /v1/alerts/{uuid}/context` | Matched context documents (runbooks, SOPs, IR plans) |
+| Findings | `GET /v1/alerts/{uuid}/findings` | Agent analysis output posted back to the alert |
+| Activity | `GET /v1/alerts/{uuid}/activity` | Immutable audit log of every action on the alert |
+
+## The `_metadata` Block
+
+The `GET /v1/alerts/{uuid}` and webhook payload responses include a computed `_metadata` block:
+
+```json
+{
+  "_metadata": {
+    "generated_at": "2025-01-15T10:35:00Z",
+    "alert_source": "sentinel",
+    "indicator_count": 3,
+    "enrichment": {
+      "succeeded": ["virustotal", "abuseipdb"],
+      "failed": [],
+      "enriched_at": "2025-01-15T10:30:05Z"
+    },
+    "detection_rule_matched": true,
+    "context_documents_applied": 2
+  }
+}
+```
+
+This block is computed at serialization time — no additional database columns.
+
+## Why Not OCSF?
+
+Calseta uses its own schema instead of the Open Cybersecurity Schema Framework (OCSF). OCSF is designed for data producers (EDR, network, identity vendors) mapping fields so SIEMs can ingest from diverse sources. It uses numeric class IDs, epoch timestamps, and `unmapped` buckets optimized for SIEM indexing.
+
+AI agents need different things: readable field names, structured enrichment data as a first-class concept, and a relational indicator model. Calseta's schema is designed from the ground up for agent consumption.
+
+Source-specific fields that don't map to the Calseta schema are preserved in `raw_payload`, so no data is lost.

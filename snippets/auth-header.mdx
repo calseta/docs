@@ -1,0 +1,9 @@
+All API requests require an API key in the `Authorization` header:
+
+```bash
+Authorization: Bearer cai_your_api_key
+```
+
+API keys use the `cai_` prefix and are created via `POST /v1/api-keys` or the CLI (`python -m app.cli.create_api_key`). The full key is shown once on creation and cannot be retrieved again.
+
+See [Authentication](/concepts/authentication) for details.

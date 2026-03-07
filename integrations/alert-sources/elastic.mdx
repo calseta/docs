@@ -1,0 +1,100 @@
+---
+title: "Elastic Security"
+description: "Forward alerts from Elastic Security to Calseta via webhook."
+---
+
+Elastic Security is the SIEM capability built into the Elastic Stack. Calseta receives Elastic alerts via webhook actions and normalizes them for agent consumption.
+
+## Ingestion Endpoint
+
+```
+POST /v1/ingest/elastic
+```
+
+## Setting Up the Webhook
+
+### Detection Rule Webhook Action
+
+1. In Kibana, go to **Security** → **Rules**
+2. Edit the detection rule you want to forward
+3. Under **Actions**, add a **Webhook** action
+4. Configure:
+   - URL: `https://your-calseta-host/v1/ingest/elastic`
+   - Method: `POST`
+   - Headers: `Authorization: Bearer cai_your_api_key`
+   - Body: Use the default alert JSON template
+
+### Connector Setup
+
+If you haven't created a webhook connector:
+
+1. Go to **Stack Management** → **Connectors**
+2. Create a **Webhook** connector
+3. Set the URL and authentication headers
+4. Reference this connector in your detection rule actions
+
+## Payload Format
+
+Calseta expects the standard Elastic Security alert format. Key field mappings:
+
+| Elastic Field | Calseta Field |
+|---------------|---------------|
+| `signal.rule.name` or `kibana.alert.rule.name` | `title` |
+| `signal.rule.severity` or `kibana.alert.severity` | `severity` |
+| `@timestamp` | `occurred_at` |
+| `signal.rule.threat` | Mapped to `mitre_tactics` / `mitre_techniques` |
+
+### Severity Mapping
+
+| Elastic | Calseta |
+|---------|---------|
+| `low` | `Low` (2) |
+| `medium` | `Medium` (3) |
+| `high` | `High` (4) |
+| `critical` | `Critical` (5) |
+
+## Indicator Extraction
+
+The Elastic plugin extracts indicators from:
+
+- `source.ip`, `destination.ip` — network indicators
+- `user.name`, `user.email` — account indicators
+- `file.hash.md5`, `file.hash.sha1`, `file.hash.sha256` — file hash indicators
+- `url.full`, `url.domain` — URL and domain indicators
+- Custom field mappings against `raw_payload`
+
+## Webhook Signature Verification
+
+Set `ELASTIC_WEBHOOK_SECRET` in your `.env` file. Configure the same secret in the Elastic webhook connector's authentication settings.
+
+## Example Payload
+
+```json
+{
+  "@timestamp": "2025-01-15T10:28:00Z",
+  "signal": {
+    "rule": {
+      "name": "Brute Force Login Attempts",
+      "severity": "high",
+      "threat": [
+        {
+          "framework": "MITRE ATT&CK",
+          "tactic": { "id": "TA0006", "name": "Credential Access" },
+          "technique": [{ "id": "T1110", "name": "Brute Force" }]
+        }
+      ]
+    }
+  },
+  "source": { "ip": "203.0.113.42" },
+  "user": { "name": "admin" },
+  "event": { "action": "authentication_failed", "outcome": "failure" }
+}
+```
+
+<Info>
+Elastic Security has evolved its alert schema across versions. Calseta handles both the legacy `signal.*` format and the newer `kibana.alert.*` format.
+</Info>
+
+## API Reference
+
+See [Ingest Alert](/api-reference/alerts/ingest) for the full endpoint documentation.

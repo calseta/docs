@@ -1,0 +1,106 @@
+---
+title: "Microsoft Entra ID"
+description: "Enrich user accounts with identity context from Microsoft Entra ID."
+---
+
+Microsoft Entra ID (formerly Azure Active Directory) enrichment provides identity context for user accounts — sign-in risk, group membership, conditional access status, and account details. Essential for organizations using Microsoft 365 and Azure.
+
+## Supported Indicator Types
+
+| Type | Microsoft Graph Endpoint |
+|------|--------------------------|
+| `account` | `GET /v1.0/users/{userId}` + related endpoints |
+
+## Configuration
+
+Set your Entra credentials in the `.env` file:
+
+```env
+ENTRA_TENANT_ID=your-tenant-id
+ENTRA_CLIENT_ID=your-application-client-id
+ENTRA_CLIENT_SECRET=your-client-secret
+```
+
+### App Registration Setup
+
+1. In the Azure portal, go to **Microsoft Entra ID** → **App registrations**
+2. Create a new registration
+3. Under **API permissions**, add these Microsoft Graph **application** permissions:
+   - `User.Read.All` — read user profiles
+   - `Group.Read.All` — read group memberships
+   - `AuditLog.Read.All` — read sign-in logs (for risk data)
+4. Grant admin consent
+5. Create a client secret under **Certificates & secrets**
+
+<Warning>
+Use application permissions (not delegated). The Calseta worker runs as a background service without user context.
+</Warning>
+
+## Extracted Fields
+
+| Field | Description |
+|-------|-------------|
+| `display_name` | User's display name |
+| `job_title` | Job title |
+| `department` | Department |
+| `account_enabled` | Whether the account is enabled |
+| `user_type` | `Member` or `Guest` |
+| `created_date_time` | Account creation date |
+| `last_sign_in` | Last interactive sign-in timestamp |
+| `sign_in_risk_level` | Risk level from Entra Identity Protection: `none`, `low`, `medium`, `high` |
+| `groups` | List of group names |
+| `mfa_registered` | Whether the user has registered MFA methods |
+
+## Malice Rules
+
+Default verdict thresholds:
+
+| Condition | Verdict |
+|-----------|---------|
+| `sign_in_risk_level == "high"` | `Suspicious` |
+| `account_enabled == false` | `Suspicious` |
+| Enrichment successful, no risk indicators | `Benign` |
+
+<Info>
+Entra enrichment typically produces `Suspicious` rather than `Malicious` verdicts. Sign-in risk is one data point — the overall verdict considers all enrichment providers.
+</Info>
+
+## Cache TTL
+
+| Indicator Type | Default TTL |
+|----------------|-------------|
+| Account | 1 hour |
+
+## Account Matching
+
+The Entra provider matches account indicators by:
+
+1. User principal name (`user@company.onmicrosoft.com`)
+2. Email address (`user@company.com`)
+3. Entra object ID
+
+## Example Enrichment Result
+
+```json
+{
+  "entra": {
+    "extracted": {
+      "display_name": "Jane Smith",
+      "job_title": "Security Engineer",
+      "department": "Information Security",
+      "account_enabled": true,
+      "user_type": "Member",
+      "sign_in_risk_level": "medium",
+      "groups": ["Security Team", "Azure Admins", "VPN Users"],
+      "mfa_registered": true,
+      "last_sign_in": "2025-01-15T09:15:00Z"
+    },
+    "success": true,
+    "enriched_at": "2025-01-15T10:30:07Z"
+  }
+}
+```
+
+## Rate Limits
+
+Microsoft Graph enforces per-app and per-tenant throttling. User lookup endpoints typically allow 10,000 requests per 10-minute window. Calseta's caching handles this well for most deployments.

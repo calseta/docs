@@ -6,7 +6,7 @@ This file describes the Calseta product in full. It is the authoritative referen
 
 ## What Calseta Is
 
-Calseta is an open-source, self-hostable data layer for security AI agents. It ingests security alerts from any source, normalizes them to a common schema, enriches them with threat intelligence and identity context, and delivers clean, context-rich payloads to AI agents — so agents spend their tokens on reasoning, not plumbing.
+Calseta is an open-source, self-hostable data layer for security agents. It ingests security alerts from any source, normalizes them to a common schema, enriches them with threat intelligence and identity context, and delivers clean, context-rich payloads to AI agents — so agents spend their tokens on reasoning, not plumbing.
 
 Calseta is **not** an AI SOC product. It does not build, host, or run AI agents. It is the data infrastructure layer that makes customer-built agents fast, accurate, and cost-efficient.
 
@@ -36,12 +36,12 @@ Every alert that enters Calseta passes through five deterministic steps before a
 
 Alerts arrive via webhook from any source system. Each source integration validates the raw payload and hands it off to the normalization step. Returns `202 Accepted` immediately — all downstream processing is async.
 
-Supported in v1: Microsoft Sentinel, Elastic Security, Splunk, Generic OCSF webhook (`POST /v1/alerts`).
+Supported in v1: Microsoft Sentinel, Elastic Security, Splunk, Generic webhook.
 
 ### 2. Normalize
-**Schema:** OCSF Security Finding (class_uid: 2001)
+**Schema:** Calseta agent-native schema (`CalsetaAlert`)
 
-All alerts are normalized to the Open Cybersecurity Schema Framework regardless of source. Source-specific fields that don't map to OCSF go in `ocsf_data.unmapped`. The original payload is always preserved in `raw_payload`. Normalization happens synchronously at ingest time.
+All alerts are normalized to a clean, agent-readable schema with direct columns (`title`, `severity`, `occurred_at`, `source_name`). Source-specific fields that don't map are preserved in `raw_payload`. The original payload is always preserved. Normalization happens synchronously at ingest time.
 
 ### 3. Enrich
 **Mode:** Async, parallel, cached
@@ -74,7 +74,7 @@ Agents can also pull alerts at any time via REST or MCP.
 Plugin-based source system. Each integration is a Python class implementing `AlertSourceBase`. Ships with Sentinel, Elastic, and Splunk out of the box. Any source can be added by implementing `validate_payload()`, `normalize()`, and `extract_indicators()`. Community integrations are welcome.
 
 ### Enrichment Engine
-Async, parallel enrichment for every extracted indicator. Cached per provider with configurable TTLs (1 hour for IPs, 6 hours for domains, 24 hours for hashes). On-demand enrichment API for Slack bots and ad-hoc queries. Add new providers with a single Python class implementing `EnrichmentProviderBase`.
+Async, parallel enrichment for every extracted indicator. Cached per provider with configurable TTLs (1 hour for IPs, 6 hours for domains, 24 hours for hashes). On-demand enrichment API for Slack bots and ad-hoc queries. Providers are runtime-configurable — add new ones via the REST API or seed data, no code changes required.
 
 ### Detection Rule Library
 Auto-created when alerts arrive. Each detection rule has structured metadata (MITRE tactics and techniques, data sources, false positive tags, severity) and a free-form markdown documentation field. Documentation covers: query, strategy, blind spots, false positives, and recommended responses. Surfaced to agents in every alert payload.
@@ -82,17 +82,20 @@ Auto-created when alerts arrive. Each detection rule has structured metadata (MI
 ### Context Documents
 Upload runbooks, IR plans, SOPs, and playbooks. Use targeting rules to attach documents to specific alert types, severities, detection rules, or source names. Agents receive the right documents for every alert automatically — no manual lookup required.
 
-### Workflow Catalog
-Document your SOC playbooks as structured markdown. Each workflow describes what should happen when a specific type of event occurs — written for both human analysts and AI agents to read. Workflows are tagged to specific alert types, severities, or detection rules using the same targeting rules system as context documents. When a matching alert arrives, Calseta surfaces the relevant workflows alongside runbooks and enrichment data in the agent's context payload. The agent reads the workflow documentation and decides what to do — the intelligence stays in the agent, not the platform.
+### Workflow Engine
+Python automation functions that agents can trigger via API or MCP. Each workflow is sandboxed with AST import validation, versioned with full code history, and supports human-in-the-loop approval gates for high-risk operations. Workflows receive a `WorkflowContext` with alert data, indicator data, HTTP client, secrets, and integration handles. Execution is audited with full logs and results.
 
 ### MCP Server
 Native Model Context Protocol server running on port 8001. Any MCP-compatible agent or tool can query alerts, read detection rule documentation, browse context documents, and access workflow documentation — with zero custom client code. Framework-agnostic: works equally with LangChain, LangGraph, raw Claude API, CrewAI, or any MCP-compatible tool.
 
-**MCP resources:** alerts, detection rules, workflows, context documents, metrics
-**MCP tools:** post finding, update alert status, trigger enrichment
+**MCP resources:** alerts, detection rules, workflows, context documents, enrichments, metrics
+**MCP tools:** post finding, update alert status, execute workflow, search alerts, search detection rules, enrich indicator
 
 ### Metrics API
 Alert volume, false positive rates, MTTD, workflow execution stats, time saved estimates. Accessible via REST and MCP so agents can reason about SOC health as part of their investigation context.
+
+### Web UI
+React + Vite dashboard (port 5173) for visual alert management and platform configuration. Covers alert list/detail, detection rules, enrichment providers, context documents, workflows, API keys, and agent registrations. The UI uses the same REST API under the hood — everything it does is also available programmatically.
 
 ### Auth-Ready Architecture
 API key authentication in v1. BetterAuth-ready architecture for clean extension to username/password and SSO/OIDC without modifying route code.
@@ -101,7 +104,7 @@ API key authentication in v1. BetterAuth-ready architecture for clean extension 
 
 ## Architecture
 
-Two long-running processes, shipped in the same repository, started with a single `docker compose up`:
+Three long-running processes, shipped in the same repository, started with a single `docker compose up`:
 
 ```
 FastAPI Server (port 8000)          MCP Server (port 8001)
@@ -192,7 +195,7 @@ The same targeting rules system controls which context documents and workflows a
     { "field": "severity", "operator": "in", "values": ["High", "Critical"] }
   ],
   "match_all": [
-    { "field": "severity_id", "operator": "gte", "value": 3 }
+    { "field": "severity", "operator": "in", "values": ["High", "Critical"] }
   ]
 }
 ```
@@ -200,7 +203,7 @@ The same targeting rules system controls which context documents and workflows a
 `match_any` = OR logic. `match_all` = AND logic. Both can coexist in the same rule.
 
 Supported operators: `eq`, `neq`, `in`, `not_in`, `contains`, `gte`, `lte`.
-Supported fields: `source_name`, `severity`, `severity_id`, `tags`, detection rule fields.
+Supported fields: `source_name`, `severity`, `tags`, detection rule fields.
 
 ---
 
@@ -247,7 +250,7 @@ Dedicated security engineering or small SOC team. Active interest in building in
 docker compose up
 ```
 
-That's it. The platform starts three services: FastAPI server (port 8000), MCP server (port 8001), and PostgreSQL (port 5432). Full setup documentation at [docs.calseta.com](https://docs.calseta.com).
+That's it. The platform starts three services: FastAPI server (port 8000), MCP server (port 8001), PostgreSQL (port 5432), and the web UI (port 5173). Full setup documentation at [docs.calseta.com](https://docs.calseta.com).
 
 ---
 

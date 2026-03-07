@@ -1,0 +1,38 @@
+---
+title: "search_detection_rules"
+description: "MCP tool to search detection rules"
+---
+
+## search_detection_rules
+
+Search the detection rule library by keyword, MITRE tactic/technique, or severity.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | string | No | Free-text search across rule name and documentation |
+| `mitre_tactic` | string | No | Filter by MITRE ATT&CK tactic ID (e.g., `TA0001`) |
+| `mitre_technique` | string | No | Filter by MITRE ATT&CK technique ID (e.g., `T1078`) |
+| `severity` | string | No | Filter by severity: `Informational`, `Low`, `Medium`, `High`, `Critical` |
+
+At least one parameter must be provided.
+
+### Return Value
+
+```json
+[
+  {
+    "uuid": "dr-abc123-...",
+    "name": "Suspicious Auth - Impossible Travel",
+    "severity": "High",
+    "mitre_tactics": ["TA0001"],
+    "mitre_techniques": ["T1078"],
+    "documentation": "## Overview\nDetects authentication from two geographically distant locations..."
+  }
+]
+```
+
+### Required Scope
+
+`alerts:read`

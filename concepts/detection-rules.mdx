@@ -1,0 +1,179 @@
+---
+title: "Detection Rules"
+description: "How Calseta manages detection rules and surfaces their documentation to agents."
+---
+
+Detection rules bridge your SIEM's detections and your agent's understanding of what triggered an alert. Every detection rule carries structured metadata and free-form documentation that agents read during investigation.
+
+## How Rules Are Created
+
+Detection rules are **auto-created** when alerts arrive. If an alert references a detection rule that doesn't exist yet, Calseta creates it with metadata from the alert payload. You can then enrich the rule with documentation, MITRE mappings, and more.
+
+Rules can also be created manually via the API for pre-populating your detection library.
+
+## Rule Structure
+
+| Field | Description |
+|-------|-------------|
+| `name` | Rule name (from the source system) |
+| `source_rule_id` | Original rule ID in the source system |
+| `severity` | `Informational`, `Low`, `Medium`, `High`, `Critical` |
+| `mitre_tactics` | MITRE ATT&CK tactic IDs (e.g., `TA0001`) |
+| `mitre_techniques` | MITRE ATT&CK technique IDs (e.g., `T1078`) |
+| `data_sources` | What log sources feed this rule |
+| `false_positive_tags` | Known false positive patterns |
+| `documentation` | Free-form markdown — the most important field |
+
+## Documentation Template
+
+The `documentation` field is the primary value of detection rules. A well-documented rule follows this template with all 16 sections:
+
+````markdown
+# Rule Name - v1
+
+## Overview
+
+> Brief description of what this rule detects and why it matters.
+
+---
+
+## Metadata
+
+* **ID:** `rule-uuid`
+* **Enabled:** `yes`
+* **Created By:** `author@company.com`
+* **Runs Every:** `5 mins`
+* **Severity:** `high`
+
+---
+
+## Query
+
+```kql
+SigninLogs
+| where ResultType != 0
+| summarize FailureCount = count() by IPAddress
+| where FailureCount >= 5
+```
+
+---
+
+## Threshold *(optional)*
+
+* **Field:** `FailureCount`
+* **Threshold:** `>= 5 failures within 10 minutes`
+
+---
+
+## Alert Suppression *(optional)*
+
+* **Suppression Field:** `IPAddress`
+* **Suppression Duration:** `30m`
+
+---
+
+## Machine Learning Job *(optional)*
+
+> Not applicable for this rule.
+
+---
+
+## MITRE ATT&CK
+
+* **Tactics:** `Initial Access`, `Credential Access`
+* **Techniques:** `T1110 - Brute Force`
+* **Sub-Techniques:** `T1110.001 - Password Guessing`
+
+---
+
+## Goal
+
+> What this rule is trying to achieve — the detection objective.
+
+---
+
+## Strategy Abstract
+
+> How the rule works at a high level — the detection logic explained.
+
+---
+
+## Data Sources
+
+* `Source 1`
+* `Source 2`
+
+---
+
+## Blind Spots & Assumptions
+
+* What this rule cannot see.
+* What assumptions the rule makes about data availability.
+
+---
+
+## False Positives
+
+* Known false positive scenarios.
+* How to distinguish from true positives.
+
+---
+
+## Validation
+
+> Steps to validate the rule fires correctly.
+
+---
+
+## Priority
+
+> Why this severity level was chosen.
+
+---
+
+## Responses
+
+* Step-by-step response actions when this rule fires.
+* Escalation criteria.
+
+---
+
+## Additional Notes
+
+* Related rules, playbooks, or context.
+````
+
+<Info>
+All 16 sections should always be present, even if marked "Not applicable." This gives agents a consistent structure to parse. Use the query language appropriate to your source: KQL for Sentinel, EQL for Elastic, SPL for Splunk.
+</Info>
+
+<Tip>
+The quality of your detection rule documentation directly impacts agent reasoning quality. Invest time in documenting false positives, blind spots, and recommended responses.
+</Tip>
+
+## How Agents Use Detection Rules
+
+When an agent retrieves an alert (via REST or MCP), the associated detection rule is included in the response. The agent reads the documentation to understand:
+
+- What the detection is looking for
+- What false positives to consider
+- What investigation steps to take
+- What response actions are appropriate
+
+This makes agents context-aware without custom prompt engineering.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/detection-rules` | List all rules |
+| `GET` | `/v1/detection-rules/{uuid}` | Get a single rule |
+| `POST` | `/v1/detection-rules` | Create a rule |
+| `PATCH` | `/v1/detection-rules/{uuid}` | Update a rule |
+| `DELETE` | `/v1/detection-rules/{uuid}` | Delete a rule |
+
+## MCP Access
+
+- **Resource:** `calseta://detection-rules` — list all rules
+- **Resource:** `calseta://detection-rules/{uuid}` — get a single rule
+- **Tool:** `search_detection_rules` — search by keyword, MITRE mapping, or severity

@@ -1,0 +1,96 @@
+---
+title: "Authentication"
+description: "Create API keys and authenticate requests to the Calseta REST API and MCP server."
+---
+
+Calseta uses API key authentication. Both the REST API and MCP server accept the same keys.
+
+## API Key Format
+
+All keys use the `cai_` prefix followed by a 32-character URL-safe random string:
+
+```
+cai_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+```
+
+Keys are stored as bcrypt hashes. The full key is shown **once** on creation and cannot be retrieved again.
+
+## Creating an API Key
+
+### Via CLI (recommended for first key)
+
+```bash
+python -m app.cli.create_api_key \
+  --name "My Agent" \
+  --scopes "alerts:read,alerts:write,enrichments:read,workflows:read,workflows:execute"
+```
+
+### Via API
+
+```bash
+curl -X POST http://localhost:8000/v1/api-keys \
+  -H "Authorization: Bearer cai_your_admin_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Agent Key",
+    "scopes": ["alerts:read", "alerts:write", "enrichments:read", "workflows:read"],
+    "expires_at": "2026-01-01T00:00:00Z"
+  }'
+```
+
+<Warning>
+Save the returned API key immediately. It cannot be retrieved after creation.
+</Warning>
+
+## Using API Keys
+
+Include the key in the `Authorization` header with the `Bearer` prefix:
+
+```bash
+curl -X GET http://localhost:8000/v1/alerts \
+  -H "Authorization: Bearer cai_your_api_key"
+```
+
+The MCP server uses the same header format.
+
+## Scopes
+
+Each API key has one or more scopes that control access:
+
+| Scope | Grants access to |
+|-------|------------------|
+| `alerts:read` | Read alerts, indicators, activity, context |
+| `alerts:write` | Update alert status, post findings |
+| `enrichments:read` | Read and trigger enrichment |
+| `workflows:read` | Read workflows and workflow runs |
+| `workflows:execute` | Execute workflows |
+| `approvals:write` | Approve or reject workflow approval requests |
+| `agents:read` | Read agent registrations |
+| `agents:write` | Register, update, delete agents |
+| `admin` | Full access (API keys, source integrations, enrichment providers) |
+
+<Tip>
+Follow the principle of least privilege. An agent that only reads alerts and posts findings needs `alerts:read` and `alerts:write` — not `admin`.
+</Tip>
+
+## Key Prefix Display
+
+For display and audit purposes, only the key prefix (first 8 characters, e.g., `cai_a1b2`) is stored. This identifies which key was used in logs without exposing the full secret.
+
+## Rate Limiting
+
+All endpoints are rate-limited. Authenticated requests are limited by API key prefix. Unauthenticated requests are limited by IP address. When rate-limited, the response includes a `Retry-After` header.
+
+## Allowed Sources
+
+API keys can optionally restrict which alert sources they can ingest from:
+
+```json
+{
+  "name": "Sentinel-only key",
+  "scopes": ["alerts:write"],
+  "allowed_sources": ["sentinel"]
+}
+```
+
+When `allowed_sources` is `null` (default), the key can ingest from any source.

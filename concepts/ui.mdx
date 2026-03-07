@@ -1,0 +1,87 @@
+---
+title: "Web UI"
+description: "A web dashboard for managing alerts, configuring integrations, and monitoring your Calseta instance."
+---
+
+Calseta includes a web UI at [http://localhost:5173](http://localhost:5173) for visual alert management and platform configuration. The UI is built with React and Vite.
+
+<Info>
+The UI is optional — every action is also available via the [REST API](/api-reference/overview) and [MCP server](/mcp-reference/overview). The UI uses the same API endpoints under the hood.
+</Info>
+
+## Alerts
+
+{/* TODO: Add screenshot of alert list page */}
+<Frame>
+  <img src="/images/ui-alert-list.png" alt="Calseta UI — Alert list with severity, status, and enrichment indicators" />
+</Frame>
+
+The alert list view shows all ingested alerts with their severity, status, enrichment status, and source. Click any alert to see the full detail view.
+
+### Alert Detail
+
+{/* TODO: Add screenshot of alert detail page */}
+<Frame>
+  <img src="/images/ui-alert-detail.png" alt="Calseta UI — Alert detail with indicators, enrichment results, and context" />
+</Frame>
+
+The alert detail view includes:
+
+- **Alert metadata** — title, severity, status, source, timestamps
+- **Indicators** — extracted IOCs with malice verdicts and enrichment results
+- **Enrichment results** — per-provider breakdown (VirusTotal, AbuseIPDB, etc.)
+- **Context documents** — matched runbooks and SOPs
+- **Activity timeline** — audit log of all actions taken on the alert
+- **Relationship graph** — visual map of indicator relationships across alerts
+
+## Settings
+
+The settings section provides management interfaces for:
+
+### Detection Rules
+
+{/* TODO: Add screenshot of detection rules page */}
+<Frame>
+  <img src="/images/ui-detection-rules.png" alt="Calseta UI — Detection rules list" />
+</Frame>
+
+View and edit detection rules with MITRE ATT&CK mappings and full documentation. Rules are auto-created when alerts arrive from source systems.
+
+### Enrichment Providers
+
+{/* TODO: Add screenshot of enrichment providers page */}
+<Frame>
+  <img src="/images/ui-enrichment-providers.png" alt="Calseta UI — Enrichment provider configuration" />
+</Frame>
+
+Configure builtin and custom enrichment providers. View provider status (active, configured, credentials present). Test providers against sample indicators.
+
+### Context Documents
+
+Upload and manage context documents (runbooks, IR plans, SOPs). Configure targeting rules to control which documents attach to which alerts.
+
+### Workflows
+
+View and edit workflow code, execution history, and approval settings. Each workflow shows its version history and recent run results.
+
+### API Keys
+
+Create and manage API keys with scoped permissions. View key prefixes and expiration dates.
+
+### Agents
+
+Register and manage agent webhook endpoints with trigger filters.
+
+## Access
+
+The UI runs as a separate dev server during local development:
+
+```bash
+cd ui && npm install && npm run dev
+```
+
+When using `make dev` or `make lab`, the UI server starts automatically.
+
+<Tip>
+For production deployments, build the UI as static assets with `cd ui && npm run build` and serve them via your preferred web server or CDN.
+</Tip>

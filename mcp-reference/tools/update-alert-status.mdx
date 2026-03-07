@@ -1,6 +1,54 @@
 ---
 title: "update_alert_status"
-description: "Update the triage status of an alert."
+description: "MCP tool to update the triage status of an alert."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+## update_alert_status
+
+Update an alert's investigation status. Status transitions reflect the investigation lifecycle.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `alert_uuid` | string | Yes | UUID of the alert |
+| `status` | string | Yes | New status: `Open`, `Triaging`, `Escalated`, `Closed` |
+| `close_classification` | string | When closing | Classification for closed alerts (e.g., `True Positive`, `False Positive - Known Scanner`) |
+
+### Valid Status Transitions
+
+```
+Open → Triaging
+Open → Escalated
+Open → Closed
+Triaging → Escalated
+Triaging → Closed
+Escalated → Closed
+```
+
+### Example
+
+```json
+{
+  "alert_uuid": "9f2a-b3c1-...",
+  "status": "Triaging"
+}
+```
+
+### Return Value
+
+```json
+{
+  "uuid": "9f2a-b3c1-...",
+  "status": "Triaging",
+  "acknowledged_at": "2025-01-15T10:45:00Z"
+}
+```
+
+<Info>
+`acknowledged_at` is set automatically on the first transition out of `Open`. It records when investigation began.
+</Info>
+
+### Required Scope
+
+`alerts:write`

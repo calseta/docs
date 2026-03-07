@@ -1,6 +1,67 @@
 ---
 title: "API Overview"
-description: "Base URL, authentication, request format, and error codes."
+description: "Base URL, authentication, request format, and response conventions."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+The Calseta REST API provides programmatic access to alerts, enrichment, workflows, detection rules, context documents, and platform metrics.
+
+## Base URL
+
+```
+http://localhost:8000/v1/
+```
+
+All endpoints are versioned under `/v1/`. Replace `localhost:8000` with your deployment URL in production.
+
+## Authentication
+
+<Snippet file="auth-header.mdx" />
+
+## Request Format
+
+- **Content-Type:** `application/json` for all request bodies (except file uploads)
+- **Timestamps:** ISO 8601 with timezone (e.g., `2025-01-15T10:30:00Z`)
+- **IDs:** UUIDs in all paths and responses
+
+## Response Format
+
+### Single Resource
+
+```json
+{
+  "data": {
+    "uuid": "abc123-...",
+    "title": "Example Alert",
+    "severity": "High"
+  },
+  "meta": {}
+}
+```
+
+### List (Paginated)
+
+<Snippet file="pagination.mdx" />
+
+### Errors
+
+<Snippet file="error-format.mdx" />
+
+## Endpoint Groups
+
+| Group | Base Path | Description |
+|-------|-----------|-------------|
+| [Alerts](/api-reference/alerts/list) | `/v1/alerts` | Alert CRUD, ingestion, indicators, findings, context, activity |
+| [Detection Rules](/api-reference/detection-rules/list) | `/v1/detection-rules` | Detection rule library |
+| [Context Documents](/api-reference/context-documents/list) | `/v1/context-documents` | Organizational knowledge |
+| [Workflows](/api-reference/workflows/list) | `/v1/workflows` | Automation functions |
+| [Workflow Approvals](/api-reference/workflow-approvals/approve) | `/v1/workflow-approvals` | Human-in-the-loop approval |
+| [Enrichment](/api-reference/enrichment/enrich) | `/v1/enrichments` | On-demand enrichment |
+| [Enrichment Providers](/api-reference/enrichment-providers/list) | `/v1/enrichment-providers` | Provider configuration |
+| [Agents](/api-reference/agents/list) | `/v1/agents` | Agent webhook registration |
+| [Source Integrations](/api-reference/source-integrations/list) | `/v1/source-integrations` | Alert source configuration |
+| [Metrics](/api-reference/metrics/summary) | `/v1/metrics` | Platform metrics |
+| [API Keys](/api-reference/api-keys/list) | `/v1/api-keys` | Key management |
+
+## Ingestion
+
+Alert ingestion uses a separate path: `POST /v1/ingest/{source_name}`. This endpoint returns `202 Accepted` within 200ms — all enrichment and dispatch happen asynchronously via the task queue.

@@ -1,6 +1,106 @@
 ---
 title: "MCP Setup"
-description: "Configure the Calseta MCP server in Claude Code, Cursor, or any MCP client."
+description: "Configure the Calseta MCP server in Claude Desktop, Claude Code, Cursor, or any MCP client."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+The Calseta MCP server runs on port 8001 and uses Server-Sent Events (SSE) as its transport protocol.
+
+## Prerequisites
+
+1. Calseta is running (`docker compose up`)
+2. You have an API key with the appropriate scopes
+3. The MCP server is accessible at `http://localhost:8001` (or your deployment URL)
+
+## Claude Desktop
+
+Add Calseta to your Claude Desktop configuration file:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "calseta": {
+      "url": "http://localhost:8001/sse",
+      "headers": {
+        "Authorization": "Bearer cai_your_api_key"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving the config.
+
+## Claude Code
+
+Add to your project's `.mcp.json` or global MCP config:
+
+```json
+{
+  "mcpServers": {
+    "calseta": {
+      "url": "http://localhost:8001/sse",
+      "headers": {
+        "Authorization": "Bearer cai_your_api_key"
+      }
+    }
+  }
+}
+```
+
+## Cursor
+
+In Cursor settings, add a new MCP server:
+
+1. Open **Settings** → **MCP**
+2. Click **Add Server**
+3. Configure:
+   - Name: `calseta`
+   - URL: `http://localhost:8001/sse`
+   - Headers: `Authorization: Bearer cai_your_api_key`
+
+## Generic MCP Client
+
+Any MCP-compatible client can connect using:
+
+| Setting | Value |
+|---------|-------|
+| Transport | SSE (Server-Sent Events) |
+| URL | `http://localhost:8001/sse` |
+| Auth header | `Authorization: Bearer cai_your_api_key` |
+
+## Verifying the Connection
+
+After configuring your client, you should be able to:
+
+1. **List resources** — ask your agent to read `calseta://alerts` to see recent alerts
+2. **Use tools** — ask your agent to search alerts with `search_alerts`
+3. **Read enrichment** — ask your agent to check `calseta://enrichments/ip/8.8.8.8`
+
+## Required Scopes
+
+The scopes on your API key determine what MCP resources and tools are available:
+
+| Scope | Enables |
+|-------|---------|
+| `alerts:read` | Alert resources, search_alerts tool |
+| `alerts:write` | post_alert_finding, update_alert_status tools |
+| `enrichments:read` | Enrichment resources, enrich_indicator tool |
+| `workflows:read` | Workflow resources |
+| `workflows:execute` | execute_workflow tool |
+
+<Tip>
+Create a dedicated API key for MCP with only the scopes your agent needs. Don't reuse your admin key.
+</Tip>
+
+## Troubleshooting
+
+**"Connection refused"** — Ensure the MCP server is running. Check `docker compose ps` and look for the `mcp` service on port 8001.
+
+**"Unauthorized"** — Verify your API key is correct and hasn't expired. Check that the key prefix matches one in the database.
+
+**"No resources available"** — Your API key may lack the required scopes. Check the key's scopes with `GET /v1/api-keys`.
+
+**SSE connection drops** — Some reverse proxies buffer SSE connections. Ensure your proxy configuration supports streaming responses (disable buffering for the MCP endpoint).

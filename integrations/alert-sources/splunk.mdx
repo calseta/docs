@@ -1,0 +1,90 @@
+---
+title: "Splunk"
+description: "Forward alerts from Splunk SIEM to Calseta via webhook alert actions."
+---
+
+Splunk Enterprise Security can forward notable events to Calseta via webhook alert actions. Calseta normalizes Splunk's event format for agent consumption.
+
+## Ingestion Endpoint
+
+```
+POST /v1/ingest/splunk
+```
+
+## Setting Up the Webhook
+
+### Alert Action Configuration
+
+1. In Splunk, open the correlation search or saved search you want to forward
+2. Under **Trigger Actions**, add a **Webhook** action
+3. Configure:
+   - URL: `https://your-calseta-host/v1/ingest/splunk`
+   - Add custom headers via a props.conf/transforms.conf setup, or use a custom alert action script
+
+### Custom Alert Action (Recommended)
+
+For more control over the payload format and authentication:
+
+1. Create a custom alert action script that POSTs to Calseta
+2. Include the `Authorization: Bearer cai_your_api_key` header
+3. Format the payload as JSON with the relevant search result fields
+
+## Payload Format
+
+Key field mappings:
+
+| Splunk Field | Calseta Field |
+|--------------|---------------|
+| `search_name` or `rule_name` | `title` |
+| `severity` or `urgency` | `severity` |
+| `_time` or `trigger_time` | `occurred_at` |
+| `rule_description` | Stored in `raw_payload` |
+
+### Severity Mapping
+
+| Splunk | Calseta |
+|--------|---------|
+| `informational` / `1` | `Informational` (1) |
+| `low` / `2` | `Low` (2) |
+| `medium` / `3` | `Medium` (3) |
+| `high` / `4` | `High` (4) |
+| `critical` / `5` | `Critical` (5) |
+
+## Indicator Extraction
+
+The Splunk plugin extracts indicators from:
+
+- `src_ip`, `dest_ip`, `src`, `dest` — IP addresses
+- `user`, `src_user`, `dest_user` — account indicators
+- `url`, `domain` — URL and domain indicators
+- `file_hash`, `md5`, `sha1`, `sha256` — file hash indicators
+- Custom field mappings against `raw_payload`
+
+## Webhook Signature Verification
+
+Set `SPLUNK_WEBHOOK_SECRET` in your `.env` file. Configure HMAC signing in your Splunk webhook action or custom alert action script.
+
+## Example Payload
+
+```json
+{
+  "search_name": "Excessive Failed Logins",
+  "severity": "high",
+  "_time": "2025-01-15T10:28:00Z",
+  "result": {
+    "src_ip": "10.0.0.50",
+    "dest_ip": "192.168.1.100",
+    "user": "svc_backup",
+    "action": "failure",
+    "count": "47"
+  }
+}
+```
+
+<Tip>
+Splunk's webhook alert action sends search results as the payload. Structure your search to include the fields Calseta needs for indicator extraction — `src_ip`, `dest_ip`, `user`, etc.
+</Tip>
+
+## API Reference
+
+See [Ingest Alert](/api-reference/alerts/ingest) for the full endpoint documentation.

@@ -1,6 +1,122 @@
 ---
-title: "Alerts Resource"
-description: "Read alert data directly into your AI agent's context."
+title: "Alerts"
+description: "MCP resources for reading alert data."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+## calseta://alerts
+
+Returns a list of recent alerts with key fields for agent triage.
+
+**Example response:**
+
+```json
+[
+  {
+    "uuid": "9f2a-b3c1-...",
+    "title": "Impossible Travel Detected",
+    "severity": "High",
+    "status": "Open",
+    "enrichment_status": "Enriched",
+    "source_name": "sentinel",
+    "occurred_at": "2025-01-15T10:28:00Z",
+    "tags": ["identity", "auth"],
+    "indicator_count": 3
+  }
+]
+```
+
+---
+
+## calseta://alerts/{uuid}
+
+Returns a single alert with full details, including indicators, enrichment results, detection rule, and metadata.
+
+**URI parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `uuid` | string | The alert's unique identifier |
+
+**Example response:**
+
+```json
+{
+  "uuid": "9f2a-b3c1-...",
+  "title": "Impossible Travel Detected",
+  "severity": "High",
+  "status": "Open",
+  "source_name": "sentinel",
+  "occurred_at": "2025-01-15T10:28:00Z",
+  "indicators": [
+    {
+      "type": "ip",
+      "value": "185.220.101.47",
+      "malice": "Malicious",
+      "enrichment_results": {
+        "virustotal": { "extracted": { "malicious_count": 14 } },
+        "abuseipdb": { "extracted": { "abuse_confidence_score": 97 } }
+      }
+    }
+  ],
+  "detection_rule": {
+    "name": "Suspicious Auth - Impossible Travel",
+    "documentation": "## Overview\n..."
+  },
+  "_metadata": {
+    "indicator_count": 3,
+    "enrichment": {
+      "succeeded": ["virustotal", "abuseipdb"],
+      "failed": []
+    }
+  }
+}
+```
+
+---
+
+## calseta://alerts/{uuid}/activity
+
+Returns the activity timeline for an alert — an append-only audit log of every action.
+
+**Example response:**
+
+```json
+[
+  {
+    "event_type": "alert_created",
+    "actor_type": "system",
+    "created_at": "2025-01-15T10:30:00Z"
+  },
+  {
+    "event_type": "alert_enrichment_completed",
+    "actor_type": "system",
+    "references": {
+      "indicator_count": 3,
+      "providers_succeeded": ["virustotal", "abuseipdb"]
+    },
+    "created_at": "2025-01-15T10:30:05Z"
+  }
+]
+```
+
+---
+
+## calseta://alerts/{uuid}/context
+
+Returns context documents matched to this alert via targeting rules.
+
+**Example response:**
+
+```json
+[
+  {
+    "title": "Identity IR Runbook",
+    "doc_type": "runbook",
+    "content": "## Scope\nThis runbook covers all identity-related..."
+  }
+]
+```
+
+## Required Scope
+
+`alerts:read`

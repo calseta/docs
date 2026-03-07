@@ -1,0 +1,125 @@
+---
+title: "Enrichment Overview"
+description: "How Calseta enriches indicators using configured providers."
+---
+
+Calseta automatically enriches every indicator extracted from alerts — IPs, domains, file hashes, URLs, emails, and accounts — using configured providers. Enrichment runs asynchronously, in parallel, and results are cached.
+
+## How It Works
+
+```
+Alert ingested
+    │
+    ▼
+Indicators extracted (3-pass pipeline)
+    │
+    ▼
+Each indicator enriched by all matching providers (parallel)
+    │
+    ├── VirusTotal (IP, domain, hash)
+    ├── AbuseIPDB (IP)
+    ├── Okta (account)
+    └── Entra (account)
+    │
+    ▼
+Malice verdict set (worst across providers)
+    │
+    ▼
+Alert dispatched to agents with enrichment results
+```
+
+### Key Properties
+
+- **Parallel** — all providers run simultaneously. A slow provider never blocks others.
+- **Fault-tolerant** — a failing provider returns `success: false` and doesn't affect other providers.
+- **Cached** — results are cached per provider with configurable TTLs. The same IP enriched across 50 alerts hits the provider API once.
+- **Deterministic** — no LLM tokens consumed. Enrichment is pure API calls and rule-based verdict logic.
+
+## Builtin Providers
+
+<CardGroup cols={2}>
+  <Card title="VirusTotal" icon="virus" href="/integrations/enrichment/virustotal">
+    IP reputation, domain reputation, file hash analysis. Supports `ip`, `domain`, `hash_md5`, `hash_sha1`, `hash_sha256`.
+  </Card>
+  <Card title="AbuseIPDB" icon="shield-halved" href="/integrations/enrichment/abuseipdb">
+    IP abuse confidence scoring and category classification. Supports `ip`.
+  </Card>
+  <Card title="Okta" icon="key" href="/integrations/enrichment/okta">
+    User account details, group membership, MFA status, recent activity. Supports `account`.
+  </Card>
+  <Card title="Microsoft Entra" icon="microsoft" href="/integrations/enrichment/entra">
+    User details, sign-in risk, group membership, conditional access status. Supports `account`.
+  </Card>
+</CardGroup>
+
+## Malice Verdicts
+
+Each indicator receives a malice verdict based on threshold rules configured per provider:
+
+| Verdict | Meaning |
+|---------|---------|
+| `Pending` | Not yet enriched |
+| `Benign` | No evidence of malicious activity |
+| `Suspicious` | Some indicators of risk, not conclusive |
+| `Malicious` | Strong evidence of malicious activity |
+
+The final verdict is the **worst** across all providers: `Malicious` > `Suspicious` > `Benign` > `Pending`.
+
+## Cache TTLs
+
+Default cache durations (configurable per provider):
+
+| Indicator Type | Default TTL |
+|----------------|-------------|
+| IP addresses | 1 hour |
+| Domains | 6 hours |
+| File hashes | 24 hours |
+| Accounts | 1 hour |
+
+## Enrichment Results Structure
+
+Each indicator's enrichment results contain two levels per provider:
+
+```json
+{
+  "virustotal": {
+    "extracted": {
+      "malicious_count": 14,
+      "suspicious_count": 2,
+      "country": "DE"
+    },
+    "raw": { "...full provider response..." },
+    "success": true,
+    "enriched_at": "2025-01-15T10:30:05Z"
+  }
+}
+```
+
+- **`extracted`** — key fields extracted via configurable field extraction rules. Designed for agent consumption — concise and relevant.
+- **`raw`** — the full provider API response. Available for deep analysis but typically not needed by agents.
+
+## On-Demand Enrichment
+
+Trigger enrichment for any indicator, even outside of alert ingestion:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichments \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "ip", "value": "185.220.101.47"}'
+```
+
+## Runtime-Configurable Architecture
+
+Enrichment providers are **runtime-configurable** — each provider is a row in the `enrichment_providers` table with templated HTTP configs, auth credentials, malice threshold rules, and field extraction mappings. A single adapter class (`DatabaseDrivenProvider`) handles all providers.
+
+This means adding a new provider requires **zero code changes** — configure it via the API or seed it in the database. See [Adding Enrichment Providers](/contributing/adding-enrichment-providers) for details, or [Custom Enrichment Sources](/integrations/enrichment/custom-sources) for a walkthrough of using Logic Apps, Lambda functions, or internal APIs as enrichment sources.
+
+## API & MCP Access
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v1/enrichments` | Trigger on-demand enrichment |
+| `GET` | `/v1/enrichments/{type}/{value}` | Get enrichment results |
+| MCP | `calseta://enrichments/{type}/{value}` | Read enrichment via MCP |
+| MCP | `enrich_indicator` tool | Trigger enrichment via MCP |

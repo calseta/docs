@@ -1,0 +1,187 @@
+---
+title: "Self-Hosting"
+description: "Deploy Calseta on your own infrastructure with Docker Compose."
+---
+
+Calseta is designed for self-hosting. A single `docker compose up` starts everything you need.
+
+## Prerequisites
+
+- Docker and Docker Compose v2
+- At least 2 GB RAM
+- PostgreSQL 15+ (included in Docker Compose, or bring your own)
+
+## Quick Start
+
+```bash
+git clone https://github.com/calseta/calseta.git
+cd calseta
+cp .env.local.example .env
+docker compose up
+```
+
+Three services start:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `api` | 8000 | FastAPI REST API |
+| `mcp` | 8001 | MCP server (SSE transport) |
+| `db` | 5432 | PostgreSQL 15 |
+
+A worker process runs inside the API container, processing enrichment, webhook dispatch, and workflow execution from the task queue.
+
+## Environment Configuration
+
+All configuration is via environment variables. Copy `.env.local.example` for development or `.env.prod.example` for production.
+
+### Required Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string (`postgresql+asyncpg://...`) |
+| `ENCRYPTION_KEY` | Key for encrypting auth configs at rest |
+
+### Enrichment Provider Keys
+
+| Variable | Description |
+|----------|-------------|
+| `VIRUSTOTAL_API_KEY` | VirusTotal v3 API key |
+| `ABUSEIPDB_API_KEY` | AbuseIPDB v2 API key |
+| `OKTA_DOMAIN` | Okta domain (e.g., `company.okta.com`) |
+| `OKTA_API_TOKEN` | Okta API token |
+| `ENTRA_TENANT_ID` | Microsoft Entra tenant ID |
+| `ENTRA_CLIENT_ID` | Entra application (client) ID |
+| `ENTRA_CLIENT_SECRET` | Entra client secret |
+
+Enrichment providers without configured keys are automatically disabled — they won't block other providers or cause errors.
+
+### Optional Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_FORMAT` | `text` | `json` for production, `text` for development |
+| `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `CORS_ALLOWED_ORIGINS` | — | Comma-separated origins (disabled by default) |
+| `RATE_LIMIT_DEFAULT_PER_MINUTE` | `60` | Default rate limit |
+| `MAX_REQUEST_BODY_SIZE_MB` | `10` | Maximum request body size |
+| `APPROVAL_NOTIFIER` | `none` | Workflow approval channel: `slack`, `teams`, `none` |
+
+## Database Setup
+
+### Using Docker Compose (default)
+
+The included `docker-compose.yml` runs PostgreSQL 15 with a named volume for persistence. No additional setup needed.
+
+### Bring Your Own PostgreSQL
+
+Point `DATABASE_URL` to your existing PostgreSQL 15+ instance:
+
+```env
+DATABASE_URL=postgresql+asyncpg://calseta:password@your-host:5432/calseta
+```
+
+Requirements:
+- PostgreSQL 15 or later
+- `pgcrypto` extension enabled (`CREATE EXTENSION IF NOT EXISTS pgcrypto`)
+- A dedicated database for Calseta
+
+### Running Migrations
+
+Migrations run automatically on startup. To run them manually:
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+## Creating Your First API Key
+
+After starting Calseta, create an admin API key:
+
+```bash
+docker compose exec api python -m app.cli.create_api_key \
+  --name "Admin" \
+  --scopes "admin"
+```
+
+<Warning>
+Save the returned key immediately — it cannot be retrieved after creation.
+</Warning>
+
+## Production Deployment
+
+### Security Checklist
+
+- Set a strong `ENCRYPTION_KEY`
+- Use `LOG_FORMAT=json` for structured logging
+- Set `HTTPS_ENABLED=true` if behind a TLS-terminating proxy
+- Configure `TRUSTED_PROXY_COUNT` to match your proxy depth
+- Set `CORS_ALLOWED_ORIGINS` to your frontend domain (if applicable)
+- Use a managed PostgreSQL service (RDS, Cloud SQL, Azure Database)
+
+### Secrets Management
+
+By default, secrets come from environment variables or `.env` file. For cloud deployments, two optional backends are supported:
+
+**Azure Key Vault:**
+```env
+AZURE_KEY_VAULT_URL=https://your-vault.vault.azure.net/
+```
+Uses Managed Identity or `DefaultAzureCredential`. Install with `pip install calseta[azure]`.
+
+**AWS Secrets Manager:**
+```env
+AWS_SECRETS_MANAGER_SECRET_NAME=calseta/production
+AWS_REGION=us-east-1
+```
+Uses the standard AWS credential chain. Install with `pip install calseta[aws]`.
+
+<Info>
+Only one cloud secrets backend is active at a time. If neither is configured, the Azure and AWS SDKs are never imported — no startup penalty.
+</Info>
+
+### Infrastructure as Code
+
+<Info>
+Terraform modules for deploying Calseta on AWS (ECS + RDS) and Azure (Container Apps + Azure Database for PostgreSQL) are coming soon. Follow the [GitHub repo](https://github.com/calseta/calseta) for updates.
+</Info>
+
+### Docker Images
+
+Pre-built images are available from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/calseta/calseta-api:latest
+docker pull ghcr.io/calseta/calseta-mcp:latest
+docker pull ghcr.io/calseta/calseta-worker:latest
+```
+
+Tagged versions follow `v{major}.{minor}.{patch}`.
+
+### Health Checks
+
+- **API:** `GET http://localhost:8000/health`
+- **MCP:** `GET http://localhost:8001/health`
+
+### Reverse Proxy
+
+Place Calseta behind nginx, Caddy, or a cloud load balancer for TLS termination. Set `TRUSTED_PROXY_COUNT` so rate limiting reads the correct client IP from `X-Forwarded-For`.
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name calseta.yourcompany.com;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /mcp/ {
+        proxy_pass http://localhost:8001;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+}
+```

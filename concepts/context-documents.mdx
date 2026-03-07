@@ -1,0 +1,122 @@
+---
+title: "Context Documents"
+description: "Upload runbooks, IR plans, and SOPs — and target them to specific alert types."
+---
+
+Context documents are organizational knowledge that agents need during investigation: runbooks, IR plans, SOPs, playbooks, and reference material. Calseta attaches the right documents to each alert automatically using targeting rules.
+
+## Why Context Matters
+
+Without context documents, an agent investigating a "Suspicious Login" alert produces generic output. With the right runbook attached, the agent knows your organization's specific escalation path, which teams to notify, and what remediation steps to take.
+
+## Creating Documents
+
+### JSON Upload
+
+```bash
+curl -X POST http://localhost:8000/v1/context-documents \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Identity Incident Response Runbook",
+    "doc_type": "runbook",
+    "content": "## Scope\nThis runbook covers all identity-related security incidents...",
+    "targeting_rules": {
+      "match_any": [
+        { "field": "source_name", "operator": "eq", "value": "sentinel" }
+      ],
+      "match_all": [
+        { "field": "severity", "operator": "in", "values": ["High", "Critical"] }
+      ]
+    }
+  }'
+```
+
+### File Upload
+
+Upload Word documents, PDFs, or other formats. Calseta converts them to markdown automatically.
+
+```bash
+curl -X POST http://localhost:8000/v1/context-documents \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -F "title=SOC Procedures" \
+  -F "doc_type=sop" \
+  -F "file=@/path/to/procedures.docx"
+```
+
+<Info>
+Supported file formats: `.docx`, `.pdf`, `.pptx`, `.xlsx`, `.html`, `.md`. The original file is not stored — only the converted markdown content.
+</Info>
+
+## Targeting Rules
+
+Targeting rules control which documents attach to which alerts. Without targeting rules, a document is **global** — included with every alert.
+
+### Rule Structure
+
+```json
+{
+  "match_any": [
+    { "field": "source_name", "operator": "eq", "value": "sentinel" },
+    { "field": "severity", "operator": "in", "values": ["High", "Critical"] }
+  ],
+  "match_all": [
+    { "field": "severity", "operator": "in", "values": ["High", "Critical"] }
+  ]
+}
+```
+
+- **`match_any`** — OR logic: matches if **any** condition is true
+- **`match_all`** — AND logic: matches only if **all** conditions are true
+- Both can coexist in the same rule
+
+### Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `eq` | Equals | `{"field": "source_name", "operator": "eq", "value": "sentinel"}` |
+| `neq` | Not equals | `{"field": "severity", "operator": "neq", "value": "Informational"}` |
+| `in` | In list | `{"field": "severity", "operator": "in", "values": ["High", "Critical"]}` |
+| `not_in` | Not in list | `{"field": "source_name", "operator": "not_in", "values": ["generic"]}` |
+| `contains` | Contains | `{"field": "tags", "operator": "contains", "value": "identity"}` |
+| `gte` | Greater or equal | `{"field": "occurred_at", "operator": "gte", "value": "2025-01-01"}` |
+| `lte` | Less or equal | `{"field": "occurred_at", "operator": "lte", "value": "2025-06-01"}` |
+
+### Supported Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `source_name` | string | Alert source (`sentinel`, `elastic`, `splunk`, `generic`) |
+| `severity` | string | `Pending`, `Informational`, `Low`, `Medium`, `High`, `Critical` |
+| `tags` | string[] | Alert tags |
+
+## How Agents Access Context
+
+```bash
+curl http://localhost:8000/v1/alerts/{uuid}/context \
+  -H "Authorization: Bearer cai_your_api_key"
+```
+
+Calseta evaluates all documents against the alert and returns those that match — title, type, and full content ready for agent reasoning.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/context-documents` | List all documents |
+| `GET` | `/v1/context-documents/{uuid}` | Get a single document |
+| `POST` | `/v1/context-documents` | Create a document |
+| `PATCH` | `/v1/context-documents/{uuid}` | Update a document |
+| `DELETE` | `/v1/context-documents/{uuid}` | Delete a document |
+
+## MCP Access
+
+- **Resource:** `calseta://context-documents` — list all documents
+- **Resource:** `calseta://context-documents/{uuid}` — get a single document
+- **Resource:** `calseta://alerts/{uuid}/context` — get documents matched to a specific alert
+
+## What's Next
+
+<Info>
+**Coming in v1.1:** Knowledge base integrations will auto-sync context documents from Confluence, GitHub, and GitLab repositories — so your existing documentation stays current in Calseta without manual uploads.
+</Info>

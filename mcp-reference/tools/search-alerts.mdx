@@ -1,6 +1,52 @@
 ---
 title: "search_alerts"
-description: "Search and filter alerts by various criteria."
+description: "MCP tool to search and filter alerts."
 ---
 
-{/* Coming soon — content will be added after docs-context.md and openapi.json are available. */}
+## search_alerts
+
+Search alerts with filters on status, severity, source, tags, and time range.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `status` | string | No | Filter by status: `Open`, `Triaging`, `Escalated`, `Closed` |
+| `severity` | string | No | Filter by severity: `Informational`, `Low`, `Medium`, `High`, `Critical` |
+| `source_name` | string | No | Filter by alert source |
+| `tags` | string[] | No | Filter by tags (alerts must match any tag) |
+| `since` | string | No | ISO 8601 timestamp — only alerts after this time |
+| `limit` | integer | No | Maximum results (default: 20) |
+
+At least one parameter must be provided.
+
+### Example
+
+```json
+{
+  "status": "Open",
+  "severity": "High",
+  "since": "2025-01-14T00:00:00Z",
+  "limit": 10
+}
+```
+
+### Return Value
+
+```json
+[
+  {
+    "uuid": "9f2a-b3c1-...",
+    "title": "Impossible Travel Detected",
+    "severity": "High",
+    "status": "Open",
+    "source_name": "sentinel",
+    "occurred_at": "2025-01-15T10:28:00Z",
+    "indicator_count": 3
+  }
+]
+```
+
+### Required Scope
+
+`alerts:read`
