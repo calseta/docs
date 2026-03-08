@@ -1,0 +1,57 @@
+---
+title: 'Quickstart'
+description: 'Get Calseta running locally in under 5 minutes'
+---
+
+<Info>
+  **Calseta is under active development.** APIs and features may change. We welcome feedback and contributions on [GitHub](https://github.com/calseta/calseta).
+</Info>
+
+## Run Calseta locally
+
+Calseta runs as a single stack: FastAPI server, MCP server, and PostgreSQL. Start everything with one command:
+
+```bash
+docker compose up
+```
+
+That's it. The platform starts three services:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| FastAPI server | 8000 | REST API for alerts, incidents, enrichment, and more |
+| MCP server | 8001 | Model Context Protocol server for AI agents |
+| PostgreSQL | 5432 | Primary store and task queue |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="How It Works"
+    icon="diagram-project"
+    href="/guides/how-it-works"
+  >
+    Understand the five-step pipeline: ingest, normalize, enrich, contextualize, and dispatch.
+  </Card>
+  <Card
+    title="Authentication"
+    icon="key"
+    href="/guides/authentication"
+  >
+    Create API keys and authenticate your requests.
+  </Card>
+  <Card
+    title="Alert Sources"
+    icon="bell"
+    href="/guides/alert-sources/overview"
+  >
+    Connect Microsoft Sentinel, Elastic, Splunk, or a generic webhook.
+  </Card>
+  <Card
+    title="MCP Setup"
+    icon="plug"
+    href="/mcp-reference/setup"
+  >
+    Connect your AI agent to Calseta via the MCP server.
+  </Card>
+</CardGroup>
