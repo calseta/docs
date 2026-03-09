@@ -83,7 +83,7 @@ Auto-created when alerts arrive. Each detection rule has structured metadata (MI
 Upload runbooks, IR plans, SOPs, and playbooks. Use targeting rules to attach documents to specific alert types, severities, detection rules, or source names. Agents receive the right documents for every alert automatically — no manual lookup required.
 
 ### Workflow Engine
-Python automation functions that agents can trigger via API or MCP. Each workflow is sandboxed with AST import validation, versioned with full code history, and supports human-in-the-loop approval gates for high-risk operations. Workflows receive a `WorkflowContext` with alert data, indicator data, HTTP client, secrets, and integration handles. Execution is audited with full logs and results.
+HTTP automation scripts that call external APIs on behalf of your SOC. Python is the glue layer for constructing requests, calling endpoints via `ctx.http`, and parsing responses. Ships with 9 pre-built Okta/Entra identity workflows. Custom workflows follow the same pattern — call any REST API, webhook, Lambda Function URL, or Logic App trigger. Each workflow is sandboxed with AST import validation, versioned with full code history, and supports human-in-the-loop approval gates for high-risk operations. Code generation via `POST /v1/workflows/generate` and test mode with mock HTTP interception. Execution is audited with full logs and results.
 
 ### MCP Server
 Native Model Context Protocol server running on port 8001. Any MCP-compatible agent or tool can query alerts, read detection rule documentation, browse context documents, and access workflow documentation — with zero custom client code. Framework-agnostic: works equally with LangChain, LangGraph, raw Claude API, CrewAI, or any MCP-compatible tool.
