@@ -318,6 +318,15 @@
       ]
     }
   },
+  "contextual": {
+   "options": [
+     "copy",
+     "view",
+     "claude",
+     "cursor",
+     "chatgpt"
+   ]
+ },
   "footer": {
     "socials": {
       "github": "https://github.com/calseta/calseta"
