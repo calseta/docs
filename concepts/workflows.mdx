@@ -1,21 +1,32 @@
 ---
 title: "Workflows"
-description: "Sandboxed Python automations and custom HTTP endpoints that agents can discover and trigger."
+description: "HTTP automation scripts that agents can discover and trigger to call external APIs on behalf of your SOC."
 ---
 
-Workflows are automated response actions that agents can discover and trigger via API or MCP. Calseta supports two workflow types: **sandboxed Python functions** for logic that runs inside the platform, and **custom HTTP endpoints** for triggering external automation.
+Workflows are **HTTP automation scripts** that call external APIs on behalf of your SOC. Python is the glue layer — you use it to construct HTTP requests, call endpoints via `ctx.http`, and parse responses. Agents discover workflows via API or MCP and trigger them during investigations.
 
-## Sandboxed Python Workflows
+Calseta supports two workflow types: **sandboxed HTTP automation scripts** for logic that runs inside the platform, and **custom HTTP endpoints** for triggering external automation.
 
-Each Python workflow is an `async def run()` function that receives a `WorkflowContext` and returns a `WorkflowResult`:
+## HTTP Automation Scripts
+
+Each workflow is an `async def run()` function that receives a `WorkflowContext` and returns a `WorkflowResult`. The primary tool is `ctx.http` — an `httpx.AsyncClient` for calling any REST API, webhook, serverless function, or HTTP endpoint:
 
 ```python
 async def run(ctx: WorkflowContext) -> WorkflowResult:
+    api_key = ctx.secrets.get("FIREWALL_API_KEY")
+    if not api_key:
+        return WorkflowResult.fail("FIREWALL_API_KEY is not set")
+
     ip = ctx.indicator.value
-    resp = await ctx.http.post(
-        "https://firewall.internal/api/block",
-        json={"ip": ip}
-    )
+    try:
+        resp = await ctx.http.post(
+            "https://firewall.internal/api/block",
+            json={"ip": ip},
+            headers={"Authorization": f"Bearer {api_key}"}
+        )
+    except Exception as exc:
+        return WorkflowResult.fail(f"Request failed: {exc}")
+
     if resp.status_code == 200:
         return WorkflowResult.ok(
             message=f"Blocked {ip}",
@@ -26,18 +37,25 @@ async def run(ctx: WorkflowContext) -> WorkflowResult:
     )
 ```
 
+### What You Can Do
+
+- **Call any HTTP endpoint** — REST APIs, webhooks, Lambda Function URLs, Logic App triggers, internal services
+- **Use environment variables for secrets** — API keys, tokens, webhook URLs via `ctx.secrets.get("KEY")`
+- **Use safe stdlib modules** — `json`, `hashlib`, `hmac`, `base64`, `datetime`, `re`, `uuid`, and more
+- **Use builtin integration clients** — `ctx.integrations.okta` and `ctx.integrations.entra` for pre-built Okta/Entra identity actions
+
 ### WorkflowContext
 
 The context object provides everything a workflow needs:
 
 | Property | Description |
 |----------|-------------|
-| `indicator` | The indicator being acted on (type, value, enrichment results) |
-| `alert` | The alert that triggered the workflow |
-| `http` | Pre-configured `httpx.AsyncClient` for HTTP requests |
+| `indicator` | The indicator being acted on (type, value, malice verdict, enrichment results) |
+| `alert` | The alert that triggered the workflow (may be None) |
+| `http` | Pre-configured `httpx.AsyncClient` for calling external HTTP endpoints |
 | `log` | Structured logger for execution steps |
-| `secrets` | Access to configured secrets (API keys, tokens) |
-| `integrations` | Access to configured integration clients |
+| `secrets` | Read environment variables: `ctx.secrets.get("KEY")` returns `str` or `None` |
+| `integrations` | Pre-built integration clients (Okta, Entra) — `None` if not configured |
 
 ### WorkflowResult
 
@@ -52,10 +70,27 @@ WorkflowResult.fail(message="Failed because...")
 
 Workflow code is validated via AST analysis at save time:
 
-- **Allowed:** Python standard library, `calseta.workflows`
-- **Blocked:** Third-party packages, file system access, subprocess calls
+- **Allowed:** Python standard library (`json`, `hashlib`, `hmac`, `base64`, `datetime`, `re`, `uuid`, etc.), `calseta.workflows`
+- **Blocked:** Third-party packages, file system access, subprocess calls, `os`, `sys`, `socket`
 
 Workflows interact with external systems exclusively through `ctx.http`.
+
+### Builtin Workflows
+
+Calseta ships with 9 pre-built workflows for Okta and Microsoft Entra identity lifecycle management. These are the "batteries included" version of the HTTP automation pattern — they use the same `ctx.http` under the hood, wrapped in typed integration clients:
+
+- **Okta** — Revoke sessions, suspend/unsuspend user, reset password, force password expiry
+- **Entra** — Revoke sign-in sessions, disable/enable account, force MFA re-registration
+
+All builtins require human approval when triggered by an AI agent.
+
+### Code Generation
+
+Use `POST /v1/workflows/generate` to describe what you want in plain English. The API generates valid workflow code from your description, validates it, and returns it for review before saving. Requires `ANTHROPIC_API_KEY`.
+
+### Testing
+
+Use `POST /v1/workflows/{uuid}/test` to run a workflow with mock HTTP responses. No real external calls are made — the test endpoint intercepts HTTP requests and returns your mock responses.
 
 ## Custom HTTP Endpoint Workflows
 
