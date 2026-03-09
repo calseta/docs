@@ -5,7 +5,7 @@ description: "MCP tool to trigger workflow execution"
 
 ## execute_workflow
 
-Triggers execution of a workflow. When the workflow has `requires_approval: true`, creates a pending approval request instead of executing immediately.
+Triggers execution of a workflow. When the workflow has `approval_mode` set to `"always"` or `"agent_only"`, creates a pending approval request instead of executing immediately.
 
 ### Parameters
 

@@ -203,11 +203,13 @@ curl -X POST http://localhost:8000/v1/workflows/{uuid}/test \
 
 ## Approval Gate
 
-Set `requires_approval: true` on a workflow. When an agent triggers it, execution pauses until a human approves or rejects via REST API, Slack buttons, or Teams.
+Set `approval_mode` on a workflow to control when approval is required:
 
-<Info>
-The approval gate only fires when `trigger_source=agent`. Human-triggered executions bypass the gate entirely.
-</Info>
+- `"always"` — all triggers (human and agent) require approval
+- `"agent_only"` — only agent-triggered executions require approval; humans bypass the gate
+- `"never"` — no approval required
+
+When the gate fires, execution pauses until a human approves or rejects via REST API, Slack buttons, or Teams.
 
 Agent-triggered requests must include `reason` and `confidence` fields.
 

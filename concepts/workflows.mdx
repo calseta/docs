@@ -114,11 +114,15 @@ The workflow `documentation` field describes what the endpoint does, so agents c
 
 ## Human-in-the-Loop Approval
 
-Workflows can require human approval before execution. When an agent triggers an approval-required workflow, Calseta creates a pending approval request instead of executing immediately.
+Workflows support a configurable approval gate via `approval_mode`:
+
+- `"always"` — all triggers (human and agent) require approval before execution
+- `"agent_only"` — only agent-triggered executions require approval; humans bypass the gate
+- `"never"` — no approval required, execute immediately
 
 ```json
 {
-  "requires_approval": true,
+  "approval_mode": "always",
   "approval_channel": "#soc-approvals",
   "approval_timeout_seconds": 3600,
   "risk_level": "high"
@@ -127,15 +131,11 @@ Workflows can require human approval before execution. When an agent triggers an
 
 ### Approval Flow
 
-1. Agent calls `execute_workflow` with `reason` and `confidence`
+1. Agent (or human, if `approval_mode` is `"always"`) calls `execute_workflow` with `reason` and `confidence`
 2. Calseta creates an approval request and notifies the configured channel
 3. A human approves or rejects via REST API or Slack buttons
 4. If approved, the workflow is queued for execution
 5. If rejected or expired, no action is taken
-
-<Info>
-The approval gate only fires when `trigger_source=agent`. Human-triggered executions via the REST API bypass the gate entirely.
-</Info>
 
 ### Notification Channels
 
