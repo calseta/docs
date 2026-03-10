@@ -15,7 +15,7 @@ Calseta is under active development. This roadmap reflects our current plans —
 
 - **Knowledge base integrations** — auto-sync context documents from Confluence, GitHub, and GitLab repositories
 - **SIEM polling sources** — pull alerts from SIEMs on a schedule (in addition to existing webhook push)
-- **Inline field extractions** — configure field extractions as part of enrichment provider registration (single API call)
+- **Inline field extractions on provider creation** — accept an optional `field_extractions` array in the provider create/update payload so both can be configured in a single API call (field extractions are already manageable via dedicated [CRUD endpoints](/api-reference/enrichment-field-extractions/list))
 
 ## v1.2
 

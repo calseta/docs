@@ -161,7 +161,23 @@ curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
 |-------|-------------|
 | `source_path` | Dot-notation path into the raw response (e.g., `data.results.score`) |
 | `target_key` | Key name in the `extracted` object surfaced to agents |
-| `value_type` | Expected type: `string`, `integer`, `float`, `boolean`, `array` |
+| `value_type` | Expected type: `string`, `int`, `float`, `bool`, `list`, `dict`, `any` |
+
+Use the **bulk create** endpoint to add multiple extractions at once:
+
+```bash
+curl -X POST http://localhost:8000/v1/enrichment-field-extractions/bulk \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "extractions": [
+      { "provider_name": "greynoise", "indicator_type": "ip", "source_path": "data.classification", "target_key": "classification", "value_type": "string" },
+      { "provider_name": "greynoise", "indicator_type": "ip", "source_path": "data.noise", "target_key": "is_noise", "value_type": "bool" }
+    ]
+  }'
+```
+
+You can list, update, and delete field extractions via the full [CRUD API](/api-reference/enrichment-field-extractions/list). Builtin provider extractions are **system-managed** — they can be toggled on/off but not deleted. When a custom provider is deleted, all its field extractions are automatically removed.
 
 ## Cache Configuration
 

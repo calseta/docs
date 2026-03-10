@@ -61,13 +61,13 @@ Each API key has one or more scopes that control access:
 |-------|------------------|
 | `alerts:read` | Read alerts, indicators, activity, context |
 | `alerts:write` | Update alert status, post findings |
-| `enrichments:read` | Read and trigger enrichment |
+| `enrichments:read` | Read and trigger enrichment, read field extractions |
 | `workflows:read` | Read workflows and workflow runs |
 | `workflows:execute` | Execute workflows |
 | `approvals:write` | Approve or reject workflow approval requests |
 | `agents:read` | Read agent registrations |
 | `agents:write` | Register, update, delete agents |
-| `admin` | Full access (API keys, source integrations, enrichment providers) |
+| `admin` | Full access (API keys, source integrations, enrichment providers, field extractions) |
 
 <Tip>
 Follow the principle of least privilege. An agent that only reads alerts and posts findings needs `alerts:read` and `alerts:write` — not `admin`.

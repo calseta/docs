@@ -132,17 +132,25 @@ Workflows support a configurable approval gate via `approval_mode`:
 ### Approval Flow
 
 1. Agent (or human, if `approval_mode` is `"always"`) calls `execute_workflow` with `reason` and `confidence`
-2. Calseta creates an approval request and notifies the configured channel
-3. A human approves or rejects via REST API or Slack buttons
+2. Calseta creates an approval request with a unique `decide_token` and notifies the configured channel
+3. A human approves or rejects via the browser approval page, Slack buttons, or REST API
 4. If approved, the workflow is queued for execution
 5. If rejected or expired, no action is taken
+
+### Browser Approval Page
+
+Every approval request includes a token-authenticated browser link that approvers can open directly — no API key or login required. The link is included in Slack and Teams notifications as a "Review & Decide" button.
+
+The page displays the workflow name, risk level, indicator, agent reason, confidence, and expiry. Approvers click **Approve** or **Reject** and see an immediate confirmation.
+
+The token is 256-bit entropy (`secrets.token_urlsafe(32)`), validated with constant-time comparison, single-use (consumed on decision), and time-bound (same expiry as the approval request). Use HTTPS in production since the token is in the URL.
 
 ### Notification Channels
 
 | Channel | Interactive | Configuration |
 |---------|-------------|---------------|
-| Slack | Yes (approve/reject buttons) | `APPROVAL_NOTIFIER=slack` |
-| Teams | No (links to REST endpoints) | `APPROVAL_NOTIFIER=teams` |
+| Slack | Yes (approve/reject buttons + browser link) | `APPROVAL_NOTIFIER=slack` |
+| Teams | Yes (browser approval link) | `APPROVAL_NOTIFIER=teams` |
 | None | — | `APPROVAL_NOTIFIER=none` (default) |
 
 ## Version History
@@ -161,6 +169,8 @@ Every code change increments `code_version` and creates a version history entry.
 | `GET` | `/v1/workflows/{uuid}/runs` | List runs |
 | `POST` | `/v1/workflow-approvals/{uuid}/approve` | Approve |
 | `POST` | `/v1/workflow-approvals/{uuid}/reject` | Reject |
+| `GET` | `/v1/approvals/{uuid}/decide?token=...` | Browser approval page |
+| `POST` | `/v1/approvals/{uuid}/decide` | Submit browser decision |
 
 ## MCP Access
 

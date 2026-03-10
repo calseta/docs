@@ -209,7 +209,7 @@ Set `approval_mode` on a workflow to control when approval is required:
 - `"agent_only"` — only agent-triggered executions require approval; humans bypass the gate
 - `"never"` — no approval required
 
-When the gate fires, execution pauses until a human approves or rejects via REST API, Slack buttons, or Teams.
+When the gate fires, execution pauses until a human approves or rejects via the browser approval page (linked in Slack/Teams notifications), Slack interactive buttons, or REST API.
 
 Agent-triggered requests must include `reason` and `confidence` fields.
 

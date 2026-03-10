@@ -71,13 +71,17 @@ Enrichment providers are runtime-configurable — no code needed. Contributions 
     "default_verdict": "Benign"
   },
   "field_extractions": [
-    { "source_path": "os", "target_key": "operating_system", "value_type": "string" },
-    { "source_path": "ports", "target_key": "open_ports", "value_type": "array" },
-    { "source_path": "org", "target_key": "organization", "value_type": "string" },
-    { "source_path": "tags", "target_key": "tags", "value_type": "array" }
+    { "provider_name": "shodan", "indicator_type": "ip", "source_path": "os", "target_key": "operating_system", "value_type": "string" },
+    { "provider_name": "shodan", "indicator_type": "ip", "source_path": "ports", "target_key": "open_ports", "value_type": "list" },
+    { "provider_name": "shodan", "indicator_type": "ip", "source_path": "org", "target_key": "organization", "value_type": "string" },
+    { "provider_name": "shodan", "indicator_type": "ip", "source_path": "tags", "target_key": "tags", "value_type": "list" }
   ]
 }
 ```
+
+<Info>
+Field extractions are managed as **separate API resources** via `POST /v1/enrichment-field-extractions/bulk`, not as part of the provider creation payload. The `field_extractions` array above is a reference for contributors — when importing the configuration, create the provider first, then create the field extractions via the [bulk create endpoint](/api-reference/enrichment-field-extractions/bulk-create).
+</Info>
 
 ### Requirements
 

@@ -209,6 +209,17 @@
                 ]
               },
               {
+                "group": "Field Extractions",
+                "pages": [
+                  "api-reference/enrichment-field-extractions/list",
+                  "api-reference/enrichment-field-extractions/get",
+                  "api-reference/enrichment-field-extractions/create",
+                  "api-reference/enrichment-field-extractions/bulk-create",
+                  "api-reference/enrichment-field-extractions/update",
+                  "api-reference/enrichment-field-extractions/delete"
+                ]
+              },
+              {
                 "group": "Indicators",
                 "pages": [
                   "api-reference/indicators/get",

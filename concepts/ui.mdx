@@ -32,41 +32,29 @@ The alert detail view includes:
 - **Activity timeline** — audit log of all actions taken on the alert
 - **Relationship graph** — visual map of indicator relationships across alerts
 
-## Settings
+## Navigation
 
-The settings section provides management interfaces for:
+The sidebar is organized into three sections:
 
-### Detection Rules
+### Main
 
-<Frame>
-  <img src="/images/ui-detection-rules.png" alt="Calseta UI — Detection rules list" />
-</Frame>
+- **Dashboard** — overview metrics and recent activity
+- **Alerts** — alert list and detail views
+- **Workflows** — workflow code, execution history, and approval settings
+- **Approvals** — pending and resolved approval requests
 
-View and edit detection rules with MITRE ATT&CK mappings and full documentation. Rules are auto-created when alerts arrive from source systems.
+### Manage
 
-### Enrichment Providers
+- **Agents** — register and manage agent webhook endpoints with trigger filters
+- **Enrichments** — configure builtin and custom enrichment providers, view status, test against sample indicators. The **Field Extractions** tab on each provider's detail page manages which fields from raw API responses are surfaced to agents.
+- **Detection Rules** — view and edit detection rules with MITRE ATT&CK mappings and documentation (auto-created when alerts arrive)
+- **Context Docs** — upload and manage runbooks, IR plans, and SOPs with targeting rules
 
-<Frame>
-  <img src="/images/ui-enrichment-providers.png" alt="Calseta UI — Enrichment provider configuration" />
-</Frame>
+### Settings
 
-Configure builtin and custom enrichment providers. View provider status (active, configured, credentials present). Test providers against sample indicators.
-
-### Context Documents
-
-Upload and manage context documents (runbooks, IR plans, SOPs). Configure targeting rules to control which documents attach to which alerts.
-
-### Workflows
-
-View and edit workflow code, execution history, and approval settings. Each workflow shows its version history and recent run results.
-
-### API Keys
-
-Create and manage API keys with scoped permissions. View key prefixes and expiration dates.
-
-### Agents
-
-Register and manage agent webhook endpoints with trigger filters.
+- **API Keys** — create and manage API keys with scoped permissions
+- **Alert Sources** — configure alert source integrations and webhook endpoints
+- **Indicator Mappings** — manage indicator field extraction mappings (system-seeded normalized mappings and custom per-source mappings against raw payloads)
 
 ## Access
 

@@ -103,33 +103,54 @@ curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
   }'
 ```
 
-Repeat for each field you want agents to see:
+For multiple extractions, use the **bulk create** endpoint to add them all at once:
 
 ```bash
-# Internal hit count
-curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
+curl -X POST http://localhost:8000/v1/enrichment-field-extractions/bulk \
   -H "Authorization: Bearer cai_your_api_key" \
+  -H "Content-Type: application/json" \
   -d '{
-    "provider_name": "internal_threat_intel",
-    "indicator_type": "ip",
-    "source_path": "internal_hits",
-    "target_key": "internal_hits",
-    "value_type": "integer",
-    "description": "Number of times seen in internal logs"
-  }'
-
-# Tags
-curl -X POST http://localhost:8000/v1/enrichment-field-extractions \
-  -H "Authorization: Bearer cai_your_api_key" \
-  -d '{
-    "provider_name": "internal_threat_intel",
-    "indicator_type": "ip",
-    "source_path": "tags",
-    "target_key": "tags",
-    "value_type": "array",
-    "description": "Internal classification tags"
+    "extractions": [
+      {
+        "provider_name": "internal_threat_intel",
+        "indicator_type": "ip",
+        "source_path": "internal_hits",
+        "target_key": "internal_hits",
+        "value_type": "int",
+        "description": "Number of times seen in internal logs"
+      },
+      {
+        "provider_name": "internal_threat_intel",
+        "indicator_type": "ip",
+        "source_path": "tags",
+        "target_key": "tags",
+        "value_type": "list",
+        "description": "Internal classification tags"
+      }
+    ]
   }'
 ```
+
+You can also manage extractions after creation — list, update, or delete them:
+
+```bash
+# List all extractions for a provider
+curl http://localhost:8000/v1/enrichment-field-extractions?provider_name=internal_threat_intel \
+  -H "Authorization: Bearer cai_your_api_key"
+
+# Toggle an extraction off
+curl -X PATCH http://localhost:8000/v1/enrichment-field-extractions/{uuid} \
+  -H "Authorization: Bearer cai_your_api_key" \
+  -d '{"is_active": false}'
+
+# Delete a custom extraction
+curl -X DELETE http://localhost:8000/v1/enrichment-field-extractions/{uuid} \
+  -H "Authorization: Bearer cai_your_api_key"
+```
+
+<Info>
+Builtin providers ship with **system extractions** that cannot be deleted — only toggled on/off. Custom extractions you create can be fully edited or removed. When you delete a provider, all its field extractions are automatically cleaned up.
+</Info>
 
 ### Step 4: Test It
 
