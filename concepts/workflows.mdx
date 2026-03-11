@@ -131,11 +131,12 @@ Workflows support a configurable approval gate via `approval_mode`:
 
 ### Approval Flow
 
-1. Agent (or human, if `approval_mode` is `"always"`) calls `execute_workflow` with `reason` and `confidence`
-2. Calseta creates an approval request with a unique `decide_token` and notifies the configured channel
-3. A human approves or rejects via the browser approval page, Slack buttons, or REST API
-4. If approved, the workflow is queued for execution
-5. If rejected or expired, no action is taken
+1. A request hits `POST /v1/workflows/{uuid}/execute`. The `trigger_source` is derived server-side from the API key's `key_type` (`human` or `agent`) — it is not a request body field.
+2. If the trigger requires approval (based on `approval_mode` and `trigger_source`), Calseta creates an approval request. Agent keys (`key_type: agent`) must include `reason` and `confidence` in the request body.
+3. Calseta notifies the configured channel with a unique `decide_token`
+4. A human approves or rejects via the browser approval page, Slack buttons, or REST API
+5. If approved, the workflow is queued for execution
+6. If rejected or expired, no action is taken
 
 ### Browser Approval Page
 

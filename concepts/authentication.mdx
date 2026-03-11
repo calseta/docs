@@ -34,6 +34,7 @@ curl -X POST http://localhost:8000/v1/api-keys \
   -d '{
     "name": "My Agent Key",
     "scopes": ["alerts:read", "alerts:write", "enrichments:read", "workflows:read"],
+    "key_type": "agent",
     "expires_at": "2026-01-01T00:00:00Z"
   }'
 ```
@@ -41,6 +42,21 @@ curl -X POST http://localhost:8000/v1/api-keys \
 <Warning>
 Save the returned API key immediately. It cannot be retrieved after creation.
 </Warning>
+
+## Key Types
+
+Every API key has a `key_type` — either `"human"` (default) or `"agent"`:
+
+| Type | Purpose | Workflow behavior |
+|------|---------|-------------------|
+| `human` | Human operators, dashboards, scripts | Workflows triggered as `trigger_source: human`. Bypasses `agent_only` approval gates. |
+| `agent` | AI agents, automated systems | Workflows triggered as `trigger_source: agent`. Must provide `reason` and `confidence` when executing workflows. Subject to `agent_only` and `always` approval gates. |
+
+The `trigger_source` for workflow execution is derived **server-side** from the API key's `key_type` — it is not a request body field. This ensures agents cannot bypass approval gates by claiming to be human.
+
+<Tip>
+Create separate keys for human operators and AI agents. This gives you audit clarity and lets approval gates distinguish between human and agent triggers automatically.
+</Tip>
 
 ## Using API Keys
 
