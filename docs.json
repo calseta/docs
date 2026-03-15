@@ -67,6 +67,12 @@
             ]
           },
           {
+            "group": "Development",
+            "pages": [
+              "guides/local-development"
+            ]
+          },
+          {
             "group": "Integrations",
             "pages": [
               {
@@ -97,6 +103,9 @@
             "group": "Operations",
             "pages": [
               "operations/self-hosting",
+              "operations/production-deployment",
+              "operations/deploy-aws",
+              "operations/deploy-azure",
               "operations/roadmap"
             ]
           },
